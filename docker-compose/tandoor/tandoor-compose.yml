@@ -1,0 +1,36 @@
+version: "3.8" # Docker Compose file format version
+
+services:
+  # Main application service
+  tandoor:
+    container_name: tandoor
+    image: ghcr.io/tandoorrecipes/recipes:1.5.20
+    restart: unless-stopped
+    volumes:
+      - /data/recipes/staticfiles:/opt/recipes/staticfiles
+      - /data/recipes/mediafiles:/opt/recipes/mediafiles
+    ports:
+      - "8080:8080"
+    env_file:
+      - stack.env
+    depends_on:
+      - tandoor-db
+
+  # PostgreSQL database service
+  tandoor-db:
+    image: postgres:16-alpine
+    container_name: tandoor-db
+    volumes:
+      - /docker/db_recipes/postgresql:/var/lib/postgresql/data
+    env_file:
+      - stack.env
+    restart: unless-stopped
+
+# Volume definitions for the application
+volumes:
+  staticfiles:
+    driver: local
+  mediafiles:
+    driver: local
+  postgresql_data:
+    driver: local
