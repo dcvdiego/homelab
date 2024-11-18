@@ -16,13 +16,11 @@ Repository for my homelab setup + tips!
 ## TODO
 
 - Nextcloud
-- Authentik
 - Monitoring [Uptime Kuma]
 - Gaming clip flow [OBS/Medal -> Tdarr]
 - Proxmox Backup Server (either on gaming pc or new server?)
 - Networking: 2.5/10G switch + custom router
 - Firewall [opnsense]
 - Adblock [AdGuard Home]
-- Password manager [Vaultwarden]
 - Dashboard app [Homarr or Homepage (or both)]
 - JBOD drive cage for additional zfs mirror (DAS) or full on ATX tower case when I get more space
