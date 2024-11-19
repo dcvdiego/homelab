@@ -1,0 +1,1 @@
+Trying to get obsidian to work not only by syncing the notes themselves, but also have some integration with git and configuration as well. Meaning I can write the documentation for my homelab using it.
