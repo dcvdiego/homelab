@@ -3,3 +3,6 @@ Trying to get obsidian to work not only by syncing the notes themselves, but als
 Obsidian will be installed with both LiveSync and Git, Vim motions are also available and will be used.
 
 I will be testing a push now, after having to enable personal access tokens to be able to push using my work laptop CLI rather than GitHub desktop.
+
+## Obsidian config
+Coming soon
