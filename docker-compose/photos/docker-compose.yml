@@ -20,8 +20,11 @@ services:
       - ${UPLOAD_LOCATION}:/usr/src/app/upload
       - /data/manual_backups/xps13/Pictures:/mnt/media/old-xps13:ro
       - /etc/localtime:/etc/localtime:ro
-    env_file:
-      - stack.env
+    environment:
+      DB_HOSTNAME: database
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE_NAME: ${DB_DATABASE_NAME}
     ports:
       - '2283:2283'
     depends_on:
@@ -61,8 +64,6 @@ services:
     #   service: cpu # set to one of [armnn, cuda, openvino, openvino-wsl] for accelerated inference - use the `-wsl` version for WSL2 where applicable
     volumes:
       - model-cache:/cache
-    env_file:
-      - stack.env
     restart: always
     healthcheck:
       disable: false
