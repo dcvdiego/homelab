@@ -1,0 +1,189 @@
+version: '3.8'
+
+services:
+  prowlarr:
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    ports:
+      - 9696:9696
+    hostname: prowlarr
+    image: ghcr.io/hotio/prowlarr:release
+    restart: unless-stopped
+    volumes:
+      - /data:/data
+      - /docker/prowlarr/Definitions/Custom:/Custom
+      - /docker/prowlarr:/config
+
+  radarr:
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    ports:
+      - 7878:7878
+    hostname: radarr
+    image: ghcr.io/hotio/radarr:release
+    restart: unless-stopped
+    volumes:
+      - /data:/data
+      - /docker/radarr:/config
+      - /docker/scripts:/scripts
+      - /usr/bin/rclone:/usr/bin/rclone
+    # depends_on:
+    #   - rclone
+
+  sonarr:
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    ports:
+      - 8989:8989
+    hostname: sonarr
+    image: ghcr.io/hotio/sonarr:release
+    restart: unless-stopped
+    volumes:
+      - /data:/data
+      - /docker/scripts:/scripts
+      - /docker/sonarr:/config
+      - /usr/bin/rclone:/usr/bin/rclone
+    # depends_on:
+    #   - rclone
+
+  # zurg:
+  #   image: ghcr.io/debridmediamanager/zurg-testing:v0.9.3-final
+  #   container_name: zurg
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: curl -f localhost:9999/dav/version.txt || exit 1
+  #   ports:
+  #     - 9999:9999
+
+  #   volumes:
+  #     - /docker/zurg-testing/config.yml:/app/config.yml
+  #     - ./data:/app/data
+
+  # rclone:
+  #   image: rclone/rclone:latest
+  #   container_name: rclone
+  #   restart: unless-stopped
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #   cap_add:
+  #     - SYS_ADMIN
+  #   security_opt:
+  #     - apparmor:unconfined
+  #   devices:
+  #     - /dev/fuse:/dev/fuse:rwm
+  #   # depends_on:
+  #   #   zurg:
+  #   #     condition: service_healthy
+  #   #     restart: true
+  #   volumes:
+  #     - /data/remote/realdebrid:/data:rshared
+  #     - /docker/zurg-testing/rclone.conf:/config/rclone/rclone.conf
+  #     - /data:/mnt
+
+  #   command: "mount zurg: /data --allow-non-empty --allow-other --uid=1000 --gid=1000 --umask=002 --dir-cache-time 10s"
+   
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /docker/bazarr:/config
+      - /data:/data
+    ports:
+      - 6767:6767
+
+  jellyseerr:
+    container_name: jellyseerr
+    image: fallenbagel/jellyseerr:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /docker/jellyseerr:/app/config
+    ports:
+      - 5055:5055
+    restart: unless-stopped
+   
+  # blackhole:
+  #   image: ghcr.io/westsurname/scripts/blackhole:latest
+  #   container_name: blackhole
+  #   user: "1000:1000"
+  #   volumes:
+  #     - ${REALDEBRID_MOUNT_TORRENTS_PATH:-/dev/null}:${REALDEBRID_MOUNT_TORRENTS_PATH:-/dev/null}
+  #     - ${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_SONARR_PATH}:/${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_SONARR_PATH}
+  #     - ${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_RADARR_PATH}:/${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_RADARR_PATH}
+  #     - ./logs:/app/logs
+  #     - /mnt:/mnt
+  #     - /data:/data
+  #   env_file:
+  #     - stack.env
+  #   environment:
+  #     - BLACKHOLE_BASE_WATCH_PATH=/${BLACKHOLE_BASE_WATCH_PATH}
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - UMASK=002
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - rclone
+
+  # rdtclient:
+  #   image: rogerfar/rdtclient
+  #   container_name: rdtclient
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=Europe/London
+  #   volumes:
+  #     - /docker/rdtclient:/data/db
+  #     - /data/symlinks:/data/downloads
+  #   logging:
+  #      driver: json-file
+  #      options:
+  #         max-size: 10m
+  #   ports:
+  #     - 6500:6500
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - rclone
+
+  blackhole:
+    image: cy01/blackhole:latest # or cy01/blackhole:beta
+    container_name: blackhole
+    ports:
+      - "8282:8282" # qBittorrent
+      - "8181:8181" # Proxy
+    user: "1000:1000"
+    volumes:
+      - ./logs:/app/logs
+      - /data:/data
+      - /docker/blackhole/config.json:/app/config.json # Config file, see below
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - QBIT_PORT=8282 # qBittorrent Port. This is optional. You can set this in the config file
+      - PORT=8181 # Proxy Port. This is optional. You can set this in the config file
+    restart: unless-stopped
+
+  readarr:
+    image: lscr.io/linuxserver/readarr:develop
+    container_name: readarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /docker/readarr:/config
+      - /data:/data
+    ports:
+      - 8787:8787
+    restart: unless-stopped
