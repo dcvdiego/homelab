@@ -51,3 +51,7 @@ terraform.rc
 # Add below lines to exclude OS settings and caches
 .trash/
 .DS_Store
+# Secrets
+.env
+*.env
+!example.env
