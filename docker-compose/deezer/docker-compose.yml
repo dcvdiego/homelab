@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  deemix:
+    image: ghcr.io/bambanah/deemix:latest
+    container_name: deemix
+    volumes:
+      - /data/music:/downloads
+      - /docker/deemix:/config
+    ports:
+      - "6595:6595"
+    restart: unless-stopped
+
+  navidrome:
+    image: deluan/navidrome:latest
+    user: 1000:1000
+    ports:
+      - "4533:4533"
+    restart: unless-stopped
+
+    volumes:
+      - "/docker/navidrome:/data"
+      - "/data/music:/music/diego:ro"
+      - "/data/music_amirah:/music/amirah:ro"
+  beets:
+    image: lscr.io/linuxserver/beets:latest
+    container_name: beets
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /docker/beets:/config
+      - /data/music:/music/diego
+      - /data/music_amirah:/music/amirah
+    ports:
+      - 8337:8337
+    restart: unless-stopped
