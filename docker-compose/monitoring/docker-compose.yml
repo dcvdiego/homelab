@@ -29,6 +29,8 @@ services:
       - 3000:3000
     container_name: grafana
     image: grafana/grafana-oss:12.0.2
+    environment:
+      - GF_SERVER_ROOT_URL=http://192.168.1.224:3000
     volumes:
     - /docker/grafana-monitoring/grafana:/var/lib/grafana
     restart: unless-stopped
@@ -62,7 +64,6 @@ services:
     user: telegraf:999
     
   prometheus:
-
     image: prom/prometheus
     container_name: prometheus
     restart: unless-stopped
@@ -70,6 +71,15 @@ services:
       - 9090:9090
     volumes:
       - /docker/grafana-monitoring/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - 3001:3001
+    volumes:
+      - /docker/uptime-kuma:/app/data
 
 networks:
   default:
