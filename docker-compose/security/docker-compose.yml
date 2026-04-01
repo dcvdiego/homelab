@@ -95,3 +95,8 @@ volumes:
     driver: local
   redis:
     driver: local
+
+networks:
+  default:
+    name: network_default
+    external: true

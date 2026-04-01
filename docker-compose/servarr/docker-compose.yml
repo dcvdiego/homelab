@@ -187,3 +187,8 @@ services:
     ports:
       - 8787:8787
     restart: unless-stopped
+
+networks:
+  default:
+    name: network_default
+    external: true

@@ -26,6 +26,7 @@ services:
       - "1338:1338"
     networks:
       - strapi
+      - cloudflared
     depends_on:
       - strapiDB
 
@@ -53,3 +54,6 @@ networks:
   strapi:
     name: Strapi
     driver: bridge
+  cloudflared:
+    name: network_default
+    external: true

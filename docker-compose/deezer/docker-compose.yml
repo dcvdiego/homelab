@@ -36,3 +36,8 @@ services:
     ports:
       - 8337:8337
     restart: unless-stopped
+
+networks:
+  default:
+    name: network_default
+    external: true

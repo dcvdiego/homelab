@@ -68,3 +68,8 @@ services:
       - 9090:9090
     volumes:
       - /docker/grafana-monitoring/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml
+
+networks:
+  default:
+    name: network_default
+    external: true
