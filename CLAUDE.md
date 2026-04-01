@@ -26,6 +26,13 @@ ssh homelab-root      # root (key-only, no password)
 ```
 Key: `~/.ssh/homelab_agent`
 
+### SSH (LXC containers — direct)
+```bash
+ssh docker-prod       # ai-agent@192.168.1.224 (docker-prod LXC 101) — use for reads
+ssh docker-tower      # ai-agent@192.168.1.248 (docker-tower LXC 104) — use for reads
+```
+Use `homelab-root` + `pct exec <vmid> -- <cmd>` only when writes to an LXC are needed.
+
 To enter an LXC container from Proxmox host:
 ```bash
 ssh homelab-root "pct enter <vmid>"
@@ -74,10 +81,22 @@ homelab/
 
 ## Common Tasks
 
-### Deploy or update a stack via Portainer API
+### Redeploy a Git-backed stack via Portainer API
+**Always include `env` in the body — omitting it wipes all stored env vars for that stack.**
 ```bash
 source .env
-# Get stack ID
+# Get stack ID and current env vars first
+STACK_ID=39
+EP_ID=3
+# Redeploy (env array from GET /api/stacks response)
+curl -sk -X PUT -H "x-api-key: $PORTAINER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"pullImage":false,"prune":false,"env":[{"name":"KEY","value":"VALUE"}]}' \
+  https://$PORTAINER_HOST:$PORTAINER_PORT/api/stacks/$STACK_ID/git/redeploy?endpointId=$EP_ID
+```
+
+### List stacks and env vars
+```bash
+source .env
 curl -sk -H "x-api-key: $PORTAINER_TOKEN" \
   https://$PORTAINER_HOST:$PORTAINER_PORT/api/stacks | python3 -m json.tool | grep -E '"Id"|"Name"'
 ```
