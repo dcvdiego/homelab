@@ -67,5 +67,10 @@ services:
     restart: always
     healthcheck:
       disable: false
+networks:
+  default:
+    name: network_default
+    external: true
+
 volumes:
   model-cache:

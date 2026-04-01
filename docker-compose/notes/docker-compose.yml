@@ -48,3 +48,8 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u $$MYSQL_USER --password=$$MYSQL_PASSWORD"]
       interval: 2s
       start_period: 30s
+
+networks:
+  default:
+    name: network_default
+    external: true

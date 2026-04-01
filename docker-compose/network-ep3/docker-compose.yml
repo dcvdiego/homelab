@@ -9,3 +9,7 @@ services:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+networks:
+  default:
+    name: network_default
