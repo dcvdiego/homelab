@@ -43,3 +43,8 @@ volumes:
     driver: local
   postgresql_data:
     driver: local
+
+networks:
+  default:
+    name: network_default
+    external: true
