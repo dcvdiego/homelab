@@ -28,7 +28,7 @@ services:
     ports:
       - 3000:3000
     container_name: grafana
-    image: grafana/grafana-oss:main-ubuntu
+    image: grafana/grafana-oss:12.0.2
     volumes:
     - /docker/grafana-monitoring/grafana:/var/lib/grafana
     restart: unless-stopped
