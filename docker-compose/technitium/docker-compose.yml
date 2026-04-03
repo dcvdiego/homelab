@@ -1,0 +1,23 @@
+services:
+  technitium:
+    container_name: technitium-dns
+    hostname: technitium-dns
+    image: technitium/dns-server:latest
+    ports:
+      - "${HOST_IP:-0.0.0.0}:5380:5380/tcp"  # web UI
+      - "${HOST_IP:-0.0.0.0}:53:53/udp"       # DNS
+      - "${HOST_IP:-0.0.0.0}:53:53/tcp"       # DNS
+    environment:
+      - DNS_SERVER_DOMAIN=${DNS_SERVER_DOMAIN:-technitium-dns}
+      - DNS_SERVER_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DNS_SERVER_PREFER_IPV6=false
+      - DNS_SERVER_RECURSION=AllowOnlyForPrivateNetworks
+      - DNS_SERVER_ENABLE_BLOCKING=true
+      - DNS_SERVER_ALLOW_TXT_BLOCKING_REPORT=true
+      - DNS_SERVER_FORWARDERS=https://cloudflare-dns.com/dns-query, https://dns.google/dns-query
+      - DNS_SERVER_FORWARDER_PROTOCOL=Https
+      - DNS_SERVER_BLOCK_LIST_URLS=https://big.oisd.nl/domainswild
+      - DNS_SERVER_LOG_USING_LOCAL_TIME=true
+    volumes:
+      - /docker/technitium:/etc/dns
+    restart: unless-stopped
