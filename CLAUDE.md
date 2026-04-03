@@ -7,12 +7,12 @@ This is the working directory for managing a self-hosted homelab. Always load `.
 | Node | Type | IP | VMID | Purpose |
 |------|------|----|------|---------|
 | pvehost | Proxmox host | 192.168.1.148 | — | Hypervisor |
-| vault | LXC | — | 100 | HashiCorp Vault |
+| vault | LXC | 192.168.1.172 | 100 | HashiCorp Vault |
 | docker-prod | LXC | 192.168.1.224 | 101 | Docker (Portainer agent :9001) |
-| docker-dev | LXC | — | 102 | Docker dev environment |
-| proxy | LXC | — | 103 | Reverse proxy |
+| docker-dev | LXC | stopped | 102 | Docker dev environment |
+| proxy | LXC | 192.168.1.230 | 103 | Reverse proxy |
 | docker-tower | LXC | 192.168.1.248 | 104 | Docker primary (Portainer UI :9443) |
-| jellyfin | LXC | — | 201 | Media server |
+| jellyfin | LXC | 192.168.1.174 | 201 | Media server |
 
 External access via **Cloudflare Tunnel** (selective services only).
 `docker-prod` also has **Tailscale** at `100.97.221.5`.
