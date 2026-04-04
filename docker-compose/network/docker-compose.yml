@@ -3,7 +3,7 @@ services:
     container_name: cloudflared-tunnel
     image: cloudflare/cloudflared
     restart: unless-stopped
-    command: tunnel run
+    command: tunnel --protocol http2 run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     extra_hosts:
