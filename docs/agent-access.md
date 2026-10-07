@@ -140,10 +140,10 @@ scripts/warpgate-setup.py                        # creates Warpgate user ops wit
 for s in PORTAINER_TOKEN CF_TOKEN TECHNITIUM_TOWER_TOKEN TECHNITIUM_PROD_TOKEN NTFY_TOKEN; do
   gh secret set $s --env homelab -R $R; done     # prompts for each value
 gh variable set PORTAINER_URL --env homelab -R $R --body https://192.168.1.248:9443
-gh variable set NTFY_URL --env homelab -R $R --body "https://ntfy.$(sed -n 's/^DOMAIN=//p' site.env)"
+printf %s "https://ntfy.$(sed -n 's/^DOMAIN=//p' site.env)" | gh secret set NTFY_URL --env homelab -R $R   # secret, not variable: step env shows in public logs
 gh variable set WARPGATE_KNOWN_HOSTS --env homelab -R $R --body "$(ssh-keyscan -p 2222 -t ed25519 192.168.1.227 2>/dev/null)"
-source ~/homelab/.env && for v in CF_ACCOUNT CF_ZONE CF_TUNNEL; do
-  gh variable set $v --env homelab -R $R --body "${!v}"; done
+source ~/homelab/.env && for v in CF_ACCOUNT CF_ZONE CF_TUNNEL; do   # secrets too: identifying
+  printf %s "${!v}" | gh secret set $v --env homelab -R $R; done
 ```
 
 For attended `pve-root` sessions that need the same APIs, keep copies of the write tokens in

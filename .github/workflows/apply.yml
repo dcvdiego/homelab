@@ -52,9 +52,9 @@ jobs:
           PORTAINER_URL: ${{ vars.PORTAINER_URL }}
           PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
           CF_TOKEN: ${{ secrets.CF_TOKEN }}
-          CF_ACCOUNT: ${{ vars.CF_ACCOUNT }}
-          CF_ZONE: ${{ vars.CF_ZONE }}
-          CF_TUNNEL: ${{ vars.CF_TUNNEL }}
+          CF_ACCOUNT: ${{ secrets.CF_ACCOUNT }}
+          CF_ZONE: ${{ secrets.CF_ZONE }}
+          CF_TUNNEL: ${{ secrets.CF_TUNNEL }}
           TECHNITIUM_TOWER_TOKEN: ${{ secrets.TECHNITIUM_TOWER_TOKEN }}
           TECHNITIUM_PROD_TOKEN: ${{ secrets.TECHNITIUM_PROD_TOKEN }}
           OPS_SSH_KEY: ${{ secrets.OPS_SSH_KEY }}
@@ -64,7 +64,7 @@ jobs:
       - name: Notify
         if: always()
         env:
-          NTFY_URL: ${{ vars.NTFY_URL }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
           NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
           STATUS: ${{ job.status }}
         run: |
