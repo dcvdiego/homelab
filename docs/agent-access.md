@@ -88,7 +88,24 @@ Done 2026-10-07:
 - The repo is on the agents box (`~/homelab`, synced from WSL without `.env`, `stack.env`,
   `*.tfvars`, `TODO.md`). Sync by git from now on.
 
-Pending: the PR pipeline (below).
+PR pipeline, also 2026-10-07:
+- GitHub: environment `homelab` (owner as required reviewer, protected branches only), fork-PR
+  workflows need approval from all outside contributors, `main` protected (1 approving review,
+  stale approvals dismissed, no force-push). History rewritten once to drop a personal email and
+  identifying strings.
+- Environment secrets: `OPS_SSH_KEY`, `CF_TOKEN`, `CF_ACCOUNT`, `CF_ZONE`, `CF_TUNNEL`,
+  `TECHNITIUM_{TOWER,PROD}_TOKEN` (Technitium user `ops`, token `github-runner`), `NTFY_URL`,
+  `NTFY_TOKEN` (ntfy user `ops`, write-only `homelab-ops`). Variables: `PORTAINER_URL`,
+  `WARPGATE_KNOWN_HOSTS`. Anything identifying is a secret: step env is printed in public logs.
+- Warpgate user `ops` (key = `OPS_SSH_KEY`, only from 192.168.1.248) → `pve-root-ops`.
+- Runner `homelab-ops` online: Portainer stack `ops` (id 66, endpoint 2), registration token
+  removed from the stack env afterwards. `ai-agent` on docker-tower moved to uid/gid 2001 so it
+  doesn't share uid 1001 with the runner (it can read `/docker/ops/results`, not write it).
+
+Pending: the `homelabsito` account and its token (browser only), and `PORTAINER_TOKEN`: Portainer
+logins go through OAuth, so a password user `ops` can't exist and API keys can only be created from
+a browser session. Create one named `github-runner` on your user (My account → Access tokens).
+
 
 ## Setup: PR pipeline (unattended changes)
 
@@ -126,7 +143,7 @@ GitHub Mobile: turn on notifications for **Deployment reviews** and **Review req
 
 | Secret | How to make it |
 |---|---|
-| `PORTAINER_TOKEN` | Portainer user `ops` (admin) → Access tokens; revoke this one, not yours, if it leaks |
+| `PORTAINER_TOKEN` | Portainer → My account → Access tokens → `github-runner` (OAuth logins can't have a separate `ops` user); revoke it alone if it leaks |
 | `CF_TOKEN` | Cloudflare token: Zone DNS Edit (your zone) + Account Cloudflare Tunnel Edit, client IP filter = home WAN IP |
 | `TECHNITIUM_TOWER_TOKEN`, `TECHNITIUM_PROD_TOKEN` | On each instance: user `ops` with modify permission on the zones → Create API token |
 | `NTFY_TOKEN` | In the ntfy container: `ntfy user add ops`, `ntfy access ops homelab-ops wo`, `ntfy token add ops` |
