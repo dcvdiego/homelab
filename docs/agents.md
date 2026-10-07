@@ -11,7 +11,7 @@ Headless box that runs coding agents in **herdr**, driven from the phone with **
 | OS | Ubuntu 24.04 (upgraded from 22.04 on 2026-10-04; needs pve-container ≥ 5.3, i.e. PVE ≥ 8.4), unprivileged, nesting, `/dev/net/tun` passed through |
 | Access | `ssh agents` (diego, key `~/.ssh/homelab_agent`), Tailscale `agents` |
 | Dotfiles | chezmoi `dcvdiego/dotfiles`, role `agents` (hostname-detected) |
-| Homelab access | Through Warpgate only: `ssh pve-ro`/`docker-*-ro` (read), `ssh pve-root` (approved on the phone); unattended changes as `homelabsito` PRs. No `.env`, no host keys. See [agent-access.md](agent-access.md) |
+| Homelab access | Through Warpgate only: `ssh pve-ro`/`docker-*-ro` (read), `ssh pve-root` (approved on the phone); unattended changes as `homelabsito[bot]` PRs. No `.env`, no host keys. See [agent-access.md](agent-access.md) |
 
 ## What runs
 

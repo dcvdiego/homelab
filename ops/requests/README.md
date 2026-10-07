@@ -1,7 +1,7 @@
 # Ops requests
 
 Anything an agent can't do with read-only access (the `*-ro` Warpgate targets) is proposed as a request: a
-shell script in this directory, opened as a PR by the bot account `homelabsito`. Nothing runs
+shell script in this directory, opened as a PR by the GitHub App `homelabsito[bot]`. Nothing runs
 until the owner **approves the PR** and then **approves the deployment** in GitHub Mobile. Then the
 `homelab-ops` runner on docker-tower runs it once (`.github/workflows/apply.yml`). Use this when the
 owner isn't watching; for live work use `ssh pve-root` instead (see AGENTS.md).
