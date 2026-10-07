@@ -1,5 +1,29 @@
 # Portainer → Komodo migration plan
 
+## Status: done 2026-10-07 (Portainer stopped the same day; its data volume kept until ~2026-10-14)
+
+Done by an agent through the access model in [agent-access.md](agent-access.md): PRs by the
+`homelabsito[bot]` app, ops requests run by the `homelab-ops` runner, attended `pve-root` sessions.
+
+| Step | How | Result |
+|---|---|---|
+| Backups | `pve-root`: DB dumps (Immich, Authentik, Zulip, Strapi, notes, Vaultwarden) to `/docker/backups/pre-komodo-2026-10-07/`, then PBS `vzdump 101 104` | both OK, incremental |
+| Core + Periphery | PR #3 (upstream v2.3.3 compose files, local changes listed in each header), bootstrapped in `pve-root` | Core on docker-tower; both servers onboarded with a one-time key; terminals and container exec off |
+| Check | PR #5: live compose vs repo for all 22 stacks, env names only | 18 identical; drift in homepage, network (tower), haos (`OT_LOG_LEVEL`, and `otbr`'s `/run/dbus` missing from the repo, fixed in #6) |
+| Batch 1 (15 non-critical) | PR #6 | all running; most services restarted once (compose recreated them) |
+| Critical (matter-hub, haos, security, photos) | PR #8 | all running and healthy; Thread attached, Zigbee publishing |
+| Infra (network ×2, traefik) + register `ops` | PR #9 | DNS, tunnel (now `protocol=http2` on tower too) and HTTPS verified |
+
+Lessons: adoption recreates containers even with unchanged images and env (expect one restart per
+service); compare live with the repo before moving anything (it found two real gaps); the runner's own
+stack can't be deployed from a job.
+
+Follow-ups: drop Portainer's data volume after a week; move stack secrets into Komodo secret variables
+(`[[NAME]]`) so a Stack Read permission stops exposing env; Authentik OIDC for Komodo.
+
+---
+
+
 Direct cutover (no parallel trial). Portainer CE 2.x stays running, untouched, as the
 rollback path until the last stack is moved, then it's removed.
 
