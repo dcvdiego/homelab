@@ -51,6 +51,9 @@ jobs:
         env:
           PORTAINER_URL: ${{ vars.PORTAINER_URL }}
           PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+          KOMODO_URL: ${{ vars.KOMODO_URL }}
+          KOMODO_API_KEY: ${{ secrets.KOMODO_API_KEY }}
+          KOMODO_API_SECRET: ${{ secrets.KOMODO_API_SECRET }}
           CF_TOKEN: ${{ secrets.CF_TOKEN }}
           CF_ACCOUNT: ${{ secrets.CF_ACCOUNT }}
           CF_ZONE: ${{ secrets.CF_ZONE }}
