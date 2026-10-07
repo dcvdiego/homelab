@@ -10,7 +10,7 @@ name: apply
 on:
   push:
     branches: [main]
-    paths: ["docker-compose/**", "ops/requests/**"]
+    paths: ["docker-compose/**", "ops/requests/*.sh"]   # docs in ops/requests/ must not prompt a deployment
   workflow_dispatch:
     inputs:
       request:
