@@ -1,0 +1,176 @@
+# Frigate config — seed copy. Live file: /docker/frigate/config/config.yml on docker-prod (LXC 101).
+# {FRIGATE_*} placeholders are substituted from the container env (see example.env).
+# Camera names here are generic; the live file may use others. Read it before overwriting.
+#
+# Recording split:
+#   - NVR cameras (doorbell, garden, front_porch): the NVR keeps recording them; Frigate only does detection + live view.
+#   - E1 Pro WiFi cameras: no NVR involvement; Frigate records them to /data/frigate.
+
+# Traefik terminates TLS; 8971 still enforces Frigate's login
+tls:
+  enabled: false
+
+mqtt:
+  enabled: true
+  host: mosquitto  # haos stack, shared network_default; anonymous allowed
+  port: 1883
+
+detectors:
+  ov:
+    type: openvino
+    device: GPU
+
+model:
+  width: 300
+  height: 300
+  input_tensor: nhwc
+  input_pixel_format: bgr
+  path: /openvino-model/ssdlite_mobilenet_v2.xml
+  labelmap_path: /openvino-model/coco_91cl_bkgr.txt
+
+# i3-13100 = Intel gen13 → docs recommend QSV; all decoded (detect) streams are H.264
+ffmpeg:
+  hwaccel_args: preset-intel-qsv-h264
+
+record:
+  # Must stay enabled per camera in YAML — the UI/MQTT toggle can't turn on recording disabled here
+  enabled: false  # enabled per camera below (E1 Pros only)
+  # 0.17+ tiered retention (replaces record.retain)
+  continuous:
+    days: 0
+  motion:
+    days: 7
+  alerts:
+    retain:
+      days: 30
+  detections:
+    retain:
+      days: 30
+
+snapshots:
+  enabled: true
+  retain:
+    default: 30
+
+objects:
+  track: [person, car, dog, cat]
+
+# Per docs.frigate.video/configuration/camera_specific#reolink-cameras:
+#   ≤5MP → http-flv (doorbell); ≥6MP older/NVR → rtsp for main AND sub (garden 8MP, front_porch 16MP).
+#   Verified: the NVR returns EOF for garden's http-flv sub stream; RTSP works.
+# NVR RTSP paths are 1-indexed (Preview_01 = channel 0); FLV channels are 0-indexed.
+go2rtc:
+  streams:
+    doorbell:
+      - "ffmpeg:http://{FRIGATE_NVR_IP}/flv?port=1935&app=bcs&stream=channel0_main.bcs&user={FRIGATE_NVR_USER}&password={FRIGATE_NVR_PASSWORD}"
+      - "ffmpeg:doorbell#audio=aac"
+    doorbell_sub:
+      - "ffmpeg:http://{FRIGATE_NVR_IP}/flv?port=1935&app=bcs&stream=channel0_ext.bcs&user={FRIGATE_NVR_USER}&password={FRIGATE_NVR_PASSWORD}"
+    garden:
+      - "rtsp://{FRIGATE_NVR_USER}:{FRIGATE_NVR_PASSWORD}@{FRIGATE_NVR_IP}:554/Preview_02_main"
+    garden_sub:
+      - "rtsp://{FRIGATE_NVR_USER}:{FRIGATE_NVR_PASSWORD}@{FRIGATE_NVR_IP}:554/Preview_02_sub"
+    front_porch:
+      - "rtsp://{FRIGATE_NVR_USER}:{FRIGATE_NVR_PASSWORD}@{FRIGATE_NVR_IP}:554/Preview_03_main"
+    front_porch_sub:
+      - "rtsp://{FRIGATE_NVR_USER}:{FRIGATE_NVR_PASSWORD}@{FRIGATE_NVR_IP}:554/Preview_03_sub"
+    # --- E1 Pro WiFi cameras (direct). http-flv hung on the firmware tested; RTSP works ---
+    kitchen:
+      - "rtsp://{FRIGATE_WIFI_USER}:{FRIGATE_WIFI_PASSWORD}@{FRIGATE_WIFI1_IP}:554/h264Preview_01_main"
+    kitchen_sub:
+      - "rtsp://{FRIGATE_WIFI_USER}:{FRIGATE_WIFI_PASSWORD}@{FRIGATE_WIFI1_IP}:554/h264Preview_01_sub"
+    wifi_cam2:
+      - "rtsp://{FRIGATE_WIFI_USER}:{FRIGATE_WIFI_PASSWORD}@{FRIGATE_WIFI2_IP}:554/h264Preview_01_main"
+    wifi_cam2_sub:
+      - "rtsp://{FRIGATE_WIFI_USER}:{FRIGATE_WIFI_PASSWORD}@{FRIGATE_WIFI2_IP}:554/h264Preview_01_sub"
+
+cameras:
+  # --- NVR cameras: detect + live only (sub-stream sizes from the NVR's GetEnc) ---
+  doorbell:
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/doorbell_sub?video=copy
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    live:
+      streams:
+        Main: doorbell
+        Sub: doorbell_sub
+    detect:
+      width: 896   # actual http-flv sub size (NVR GetEnc reports 640x480)
+      height: 672
+      fps: 5
+  garden:
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/garden_sub?video=copy
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    live:
+      streams:
+        Main: garden
+        Sub: garden_sub
+    detect:
+      width: 1536
+      height: 576
+      fps: 5
+  front_porch:
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/front_porch_sub?video=copy
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    live:
+      streams:
+        Main: front_porch
+        Sub: front_porch_sub
+    detect:
+      width: 1536
+      height: 432
+      fps: 5
+
+  # --- E1 Pro: recorded 24/7 by Frigate (I-frame interval set to 1x via Reolink API) ---
+  kitchen:  # E1 Pro, FRIGATE_WIFI1_IP
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/kitchen
+          input_args: preset-rtsp-restream
+          roles: [record]
+        - path: rtsp://127.0.0.1:8554/kitchen_sub
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    live:
+      streams:
+        Main: kitchen
+        Sub: kitchen_sub
+    detect:
+      width: 896
+      height: 512
+      fps: 5
+    record:
+      enabled: true
+      continuous:
+        days: 7  # ~32 GB/day at 3 Mbps
+  wifi_cam2:  # E1 Pro, FRIGATE_WIFI2_IP
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/wifi_cam2
+          input_args: preset-rtsp-restream
+          roles: [record]
+        - path: rtsp://127.0.0.1:8554/wifi_cam2_sub
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    live:
+      streams:
+        Main: wifi_cam2
+        Sub: wifi_cam2_sub
+    detect:
+      width: 896
+      height: 512
+      fps: 5
+    record:
+      enabled: true
+      continuous:
+        days: 7  # ~32 GB/day at 3 Mbps
+
+version: 0.18-0  # added by Frigate config migration

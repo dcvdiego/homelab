@@ -1,0 +1,26 @@
+http:
+  routers:
+    homeassistant:
+      rule: 'Host(`ha.{{ env "DOMAIN" }}`)'
+      entryPoints:
+        - websecure
+      service: homeassistant
+      tls: {}
+
+    termix:
+      rule: 'Host(`term.{{ env "DOMAIN" }}`)'
+      entryPoints:
+        - websecure
+      service: termix
+      tls: {}
+
+  services:
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8123"
+
+    termix:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8081"

@@ -9,8 +9,6 @@ services:
     volumes:
       - /data/recipes/staticfiles:/opt/recipes/staticfiles
       - /data/recipes/mediafiles:/opt/recipes/mediafiles
-    ports:
-      - "8080:8080"
     environment:
       - SECRET_KEY=${RECIPES_SECRET_KEY}
       - DB_ENGINE=django.db.backends.postgresql
@@ -19,8 +17,15 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=djangodb
+      - GUNICORN_WORKERS=2
     depends_on:
       - tandoor-db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.recipes.rule=Host(`recipes.${DOMAIN}`)"
+      - "traefik.http.routers.recipes.entrypoints=websecure"
+      - "traefik.http.services.recipes.loadbalancer.server.port=8080"
+      # To enable Authentik forward auth: - "traefik.http.routers.recipes.middlewares=authentik-forwardauth@docker"
 
   # PostgreSQL database service
   tandoor-db:

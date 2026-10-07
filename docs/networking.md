@@ -8,20 +8,21 @@ ISP Modem/Router (192.168.1.1)
             ├── pvehost        192.168.1.148  static (Proxmox bridge vmbr0)
             │     ├── LXC 100: vault         192.168.1.172  static
             │     ├── LXC 101: docker-prod   192.168.1.224  static
-            │     ├── LXC 102: docker-dev    stopped
-            │     ├── LXC 103: proxy         192.168.1.230  static
+            │     ├── LXC 102: agents        192.168.1.226  static
             │     ├── LXC 104: docker-tower  192.168.1.248  static
+            │     ├── LXC 105: pbs           192.168.1.251  static
+            │     ├── LXC 106: warpgate      192.168.1.227  static
             │     └── LXC 201: jellyfin      192.168.1.174  static
             └── personal devices / other
 ```
 
 All LXC IPs are set statically inside Proxmox (`/etc/pve/lxc/<vmid>.conf`) — not relying on
-DHCP reservations. If you move to a new house with a different subnet, update the `ip=` field
+DHCP reservations. If the subnet ever changes (new router, new ISP), update the `ip=` field
 in each LXC conf file and the Proxmox host's `/etc/network/interfaces`.
 
 **External access:**
 - Cloudflare Tunnel — no inbound ports open, selective services only
-- Tailscale on docker-prod (`100.x.y.z`) — zero-trust VPN for remote admin
+- Tailscale on docker-prod (and the agents box) — zero-trust VPN for remote admin
 
 All LXCs sit on a single flat `192.168.1.0/24` network. No VLANs yet — requires a managed
 switch to implement properly (see Phase 2 below).
@@ -35,17 +36,70 @@ switch to implement properly (see Phase 2 below).
 | ISP router | Gateway, DHCP server, WiFi (temporary) |
 | Yuanley 7-port (5x 2.5G + 2x 10G SFP, unmanaged) | Switch — no VLAN support |
 
-Moving to a ~110m² 4-bed house in a few months. See Phase 2 for planned upgrade.
+See Phase 2 for the planned upgrade.
 
 ---
 
 ## DNS
 
-**Planned: Technitium DNS** — two instances for redundancy.
+**Technitium DNS**, two instances (deployed):
 
-- Instance 1: docker-prod (`192.168.1.224`)
-- Instance 2: docker-tower (`192.168.1.248`)
+- Instance 1: docker-prod (`192.168.1.224`, plus its tailnet `100.x` address), container `technitium-dns`
+- Instance 2: docker-tower (`192.168.1.248`), LAN only (not on Tailscale)
 - Router DHCP hands out both IPs. Fallback: `1.1.1.1` as tertiary.
+- Both serve the `homelab.lan` primary zone and a `$DOMAIN` (the public domain) **Forwarder** zone with local
+  A records (split DNS). Records are added **per instance**: add to both via the API.
+
+### Tailnet DNS
+
+The Tailscale admin console sets **one global nameserver, docker-prod's tailnet address, with
+"Override DNS servers" on**. Every tailnet device (phones, laptops off-network) sends *all* DNS
+there; only `*.ts.net` is answered by Tailscale itself. So if docker-prod is off the tailnet or
+Technitium on it is down, tailnet devices can reach tailnet hosts but **no public names resolve**
+(the symptom is "Tailscale on = no internet", while Collie/herdr over MagicDNS still load).
+
+### Split-DNS records are A-only
+
+Local overrides such as `frigate.`, `zigbee2mqtt.`, `status.$DOMAIN → 192.168.1.224` are A
+records. AAAA queries fall through the forwarder to Cloudflare, so IPv6-preferring clients still go
+out through Cloudflare (and Cloudflare Access) for those names. Scripts that must hit Traefik
+locally force IPv4 (`curl -4`; the Kuma script patches `getaddrinfo`).
+
+### Failure modes and monitoring
+
+**Incident, 2026-07-04 → 2026-10-04 (3 months unnoticed):** `technitium-dns` on docker-prod failed
+to restart with `bind 0.0.0.0:53: address already in use`: systemd-resolved's stub listener holds
+`127.0.0.53:53`, which blocks Docker publishing `0.0.0.0:53`. A container that never starts isn't
+retried by `restart: unless-stopped`. Around the same time docker-prod's Tailscale node key
+expired. Together: the tailnet's only resolver was gone. Found 2026-10-04 when phone push
+notifications (Collie) failed with Tailscale on.
+
+Fixed by:
+- `/etc/systemd/resolved.conf.d/no-stub-listener.conf` on docker-prod (`DNSStubListener=no`). Keep
+  it: removing it re-breaks Technitium on the next restart.
+- Re-authenticating docker-prod in Tailscale and starting the container.
+
+Monitoring (Uptime Kuma, group **DNS**, from `scripts/uptime-kuma-monitors.py`):
+
+| Monitor | What it proves |
+|---|---|
+| DNS: Technitium docker-prod | `192.168.1.224` resolves `example.com` (LAN) |
+| DNS: Technitium docker-tower | `192.168.1.248` resolves `example.com` (LAN) |
+| DNS: homelab.lan zone | the local zone is served (`frigate.homelab.lan`) |
+| DNS: tailnet resolver (push) | docker-prod's tailnet address answers **over Tailscale**. Pushed every 5 min by the agents box (LXC 102, `tailnet-dns-check.timer`, token in `~/.config/homelab/kuma-push.env` there). Kuma runs on docker-prod and can't see docker-prod's own tailnet status, so a tailnet node does the check; no push for 6 min → alert. |
+
+### Open recommendations
+
+1. **Second tailnet resolver.** Put docker-tower on Tailscale and add its `100.x` address as a second
+   global nameserver, so one container or one expired key can't take tailnet DNS down.
+2. **Break docker-prod's DNS self-reference.** docker-prod accepts Tailscale DNS, which points at
+   itself; when Technitium is down it can't resolve anything (no image pulls, no recovery).
+   `tailscale set --accept-dns=false` there would use the router instead. Check first whether its
+   containers rely on `homelab.lan` names.
+3. **Disable key expiry on server nodes** (docker-prod, agents, and any future server) in the
+   Tailscale admin console. Done for docker-prod and agents on 2026-10-04.
+4. **AAAA for split-DNS names** (optional): add AAAA records to docker-prod's IPv6 address, or
+   accept the IPv4-only behaviour above.
 
 ### Why a local DNS server (beyond ad blocking)
 
@@ -121,10 +175,10 @@ A second Proxmox node is not needed yet. It becomes worthwhile when you need hig
 
 ---
 
-## Phase 2 — new house networking plan
+## Phase 2 — network upgrade plan
 
-When moving, the goal is: proper network segmentation, security, and a WiFi setup that
-covers ~110m².
+The goal: proper network segmentation, security, and a WiFi setup that covers a medium-sized
+house.
 
 ### Architecture
 
@@ -190,16 +244,16 @@ N100 hardware is fanless, runs cool, idles at 6–8W — hardware failure is rar
 **Do NOT run OPNsense as a Proxmox VM** — if Proxmox has a problem, you lose both homelab
 and internet simultaneously. Dedicated hardware keeps internet independent of the homelab.
 
-### WiFi for the new house
+### WiFi
 
-110m² (≈ 1,180 sq ft) — a single powerful WiFi 7 router covers it comfortably (most are
-rated 2,500–3,000 sq ft). No mesh needed.
+For a typical house up to ~120 m² (≈ 1,300 sq ft), a single good WiFi 7 AP covers it comfortably
+(most are rated 2,500–3,000 sq ft). No mesh needed.
 
 If going the OPNsense route, buy an AP that can run in pure access point mode (no routing):
 - **UniFi U7 Pro** (~£150) — best-in-class, managed by a controller (run in Docker)
 - **TP-Link EAP670** (~£90) — cheaper, Omada ecosystem, good alternative
 
-Don't buy until you're in the house and can see where signal is actually weak.
+Don't buy until you can see where signal is actually weak.
 
 ### Static IP from ISP
 

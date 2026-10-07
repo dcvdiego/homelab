@@ -55,3 +55,10 @@ terraform.rc
 .env
 *.env
 !example.env
+
+# Site facts that identify the owner (domain etc.): real values in site.env, template committed
+!site.example.env
+
+# Personal notes and raw agent session transcripts
+TODO.md
+session-*.md

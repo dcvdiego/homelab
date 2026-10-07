@@ -1,0 +1,16 @@
+services:
+  matter-hub:
+    image: ghcr.io/riddix/home-assistant-matter-hub:latest
+    container_name: matter-hub
+    restart: unless-stopped
+    # Host networking required for Matter (mDNS + IPv6); bridge must use port 5540 for Alexa
+    network_mode: host
+    environment:
+      - HAMH_HOME_ASSISTANT_URL=http://192.168.1.224:8123/
+      - HAMH_HOME_ASSISTANT_ACCESS_TOKEN=${HAMH_TOKEN}
+      - HAMH_MDNS_NETWORK_INTERFACE=eth0
+      - HAMH_MDNS_STRIP_GLOBAL_IPV6=1
+      - HAMH_LOG_LEVEL=info
+      - HAMH_HTTP_PORT=8482
+    volumes:
+      - /docker/matter-hub:/data

@@ -25,14 +25,18 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE_NAME: ${DB_DATABASE_NAME}
-    ports:
-      - '2283:2283'
     depends_on:
       - redis
       - database
     restart: always
     healthcheck:
       disable: false
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.immich.rule=Host(`fotos.${DOMAIN}`)"
+      - "traefik.http.routers.immich.entrypoints=websecure"
+      - "traefik.http.services.immich.loadbalancer.server.port=2283"
+      # NOTE: Do NOT add Authentik forward auth — breaks mobile app. Use native OIDC instead.
 
   redis:
     container_name: immich_redis
