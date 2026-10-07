@@ -1,51 +1,58 @@
-# Komodo Core + MongoDB on docker-tower: replaces Portainer (docs/komodo-migration.md).
-# Bootstrapped outside Komodo (it can't deploy itself). Lives in /etc/komodo/core on docker-tower;
-# secrets are generated there into .env (root, 600) and never committed. Image: v2.3.3.
+# Upstream: https://github.com/moghtech/komodo/blob/v2.3.3/compose/mongo.compose.yaml
+# Local changes (everything else is verbatim upstream):
+#   - bundled `periphery` service removed: each Docker host runs ../komodo-periphery instead
+#   - Core port bound to docker-tower's LAN IP only (Periphery agents connect out to it; users go via Traefik)
+#
+################################
+# 🦎 KOMODO COMPOSE - MONGO 🦎 #
+################################
+
+## This compose file will deploy:
+##   1. MongoDB
+##   2. Komodo Core
+
 services:
   mongo:
-    image: mongo:8.0
-    container_name: komodo-mongo
+    image: mongo
     labels:
-      komodo.skip: ""   # keep Komodo's "stop all containers" away from its own database
+      komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     command: --quiet --wiredTigerCacheSizeGB 0.25
     restart: unless-stopped
+    # ports:
+    #   - 27017:27017
     volumes:
       - mongo-data:/data/db
       - mongo-config:/data/configdb
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DATABASE_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
-
+  
   core:
-    image: ghcr.io/moghtech/komodo-core:2.3.3
-    container_name: komodo-core
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-2}
     init: true
     restart: unless-stopped
-    labels:
-      komodo.skip: ""
-    depends_on: [mongo]
+    depends_on:
+      - mongo
     ports:
-      - "192.168.1.248:9120:9120"   # LAN only: Periphery agents connect out to it; users go via Traefik
-    env_file: .env                  # KOMODO_DATABASE_*, KOMODO_WEBHOOK_SECRET, KOMODO_JWT_SECRET, DOMAIN
+      - 192.168.1.248:9120:9120
+    env_file: ./compose.env
     environment:
       KOMODO_DATABASE_ADDRESS: mongo:27017
-      KOMODO_HOST: https://komodo.${DOMAIN}
-      KOMODO_TITLE: homelab
-      TZ: Europe/London
-      KOMODO_LOCAL_AUTH: "true"
-      # No preset admin: the owner signs up first (first user becomes admin), then this flips to true.
-      KOMODO_DISABLE_USER_REGISTRATION: ${KOMODO_DISABLE_USER_REGISTRATION:-false}
-      KOMODO_ENABLE_NEW_USERS: "false"
-      KOMODO_DISABLE_NON_ADMIN_CREATE: "true"
-      KOMODO_TRANSPARENT_MODE: "false"
-      KOMODO_JWT_TTL: 1-day
-      KOMODO_MONITORING_INTERVAL: 15-sec
-      KOMODO_RESOURCE_POLL_INTERVAL: 1-hr
     volumes:
+      ## Attach the Core / Periphery communication keys
       - keys:/config/keys
-      - /docker/komodo/backups:/backups   # dated DB backups (Komodo's backup procedure); on /docker so PBS has them
+      ## Store dated backups of the database - https://komo.do/docs/setup/backup
+      - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
+      ## Store sync files on server
+      # - /path/to/syncs:/syncs
+      ## Optionally mount a custom core.config.toml
+      # - /path/to/core.config.toml:/config/config.toml
+      ## Optionally mount custom root CA certificate to trust
+      # - /path/to/root_ca.crt:/usr/local/share/ca-certificates/root_ca.crt
 
 volumes:
+  # Mongo
   mongo-data:
   mongo-config:
+  # Core
   keys:

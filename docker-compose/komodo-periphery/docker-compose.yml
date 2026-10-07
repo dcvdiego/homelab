@@ -1,29 +1,68 @@
-# Komodo Periphery agent: one per Docker host (docker-tower, docker-prod). Connects OUT to Core,
-# so the host needs no inbound port. Lives in /etc/komodo/periphery on each host (not managed by
-# Komodo itself). Terminals and container exec are off: shells go through Warpgate only.
+# Upstream: https://github.com/moghtech/komodo/blob/v2.3.3/compose/periphery.compose.yaml
+# Local changes (everything else is verbatim upstream):
+#   - one per Docker host, in /etc/komodo/periphery with a .env holding SERVER_NAME and a one-time PERIPHERY_ONBOARDING_KEY
+#   - Core address = docker-tower's LAN IP; image pinned like Core
+#   - terminals and container exec disabled: shells go through Warpgate only
+#
+####################################
+# 🦎 KOMODO COMPOSE - PERIPHERY 🦎 #
+####################################
+
+## This compose file will deploy:
+##   1. Komodo Periphery
+
 services:
   periphery:
-    image: ghcr.io/moghtech/komodo-periphery:2.3.3
-    container_name: komodo-periphery
+    image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2.3.3}
     init: true
     restart: unless-stopped
-    labels:
-      komodo.skip: ""
-    env_file: .env   # SERVER_NAME, PERIPHERY_ONBOARDING_KEY (only until the server is onboarded)
+    ## Full variable list + descriptions are available here:
+    ## 🦎 https://github.com/moghtech/komodo/blob/main/config/periphery.config.toml 🦎
     environment:
+      ## The address of Komodo Core to connect to.
       PERIPHERY_CORE_ADDRESS: ws://192.168.1.248:9120
+      ## The name of the Komodo Server to connect as.
+      ## Must match existing server.
       PERIPHERY_CONNECT_AS: ${SERVER_NAME}
-      PERIPHERY_CORE_PUBLIC_KEYS: file:/config/keys/core.pub   # pinned to the first Core it meets
-      PERIPHERY_ROOT_DIRECTORY: /etc/komodo
-      PERIPHERY_DISABLE_TERMINALS: "true"
-      PERIPHERY_DISABLE_CONTAINER_TERMINALS: "true"
-      PERIPHERY_INCLUDE_DISK_MOUNTS: /etc/hostname,/docker
-      TZ: Europe/London
+      ## Optional. Create a Server Onboarding Key in the Komodo UI.
+      ## This allows Periphery to create a new Server in the UI with the above name,
+      ## and can be ommitted once the Server exists in Komodo.
+      PERIPHERY_ONBOARDING_KEY: ${PERIPHERY_ONBOARDING_KEY:-}
+      ## List of accepted Core public keys.
+      ## File will be auto written if doesn't exist to match first Core it connects to.
+      PERIPHERY_CORE_PUBLIC_KEYS: file:/config/keys/core.pub
+      ## Specify the root directory used by Periphery agent.
+      ## All your compose files and repos need to be inside this directory
+      ## for Periphery to interact with them.
+      PERIPHERY_ROOT_DIRECTORY: ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+      ## Specify whether to disable the terminals feature
+      ## and disallow remote shell access (inside the Periphery container).
+      PERIPHERY_DISABLE_TERMINALS: true
+      ## Specify whether to disable the container exec feature
+      ## and disallow remote container shell access.
+      PERIPHERY_DISABLE_CONTAINER_EXEC: true   # alias of PERIPHERY_DISABLE_CONTAINER_TERMINALS
+      ## If the disk size is overreporting, can use one of these to 
+      ## whitelist / blacklist the disks to filter them, whichever is easier.
+      ## Accepts comma separated list of paths.
+      ## Usually whitelisting just /etc/hostname gives correct size for single root disk.
+      PERIPHERY_INCLUDE_DISK_MOUNTS: /etc/hostname
+      # PERIPHERY_EXCLUDE_DISK_MOUNTS: /snap,/etc/repos
     volumes:
+      ## Mount private key storage volume
       - keys:/config/keys
+      ## Mount external docker socket
       - /var/run/docker.sock:/var/run/docker.sock
+      ## Allow Periphery to see processes outside of container
       - /proc:/proc
-      - /etc/komodo:/etc/komodo   # same path inside and out: stacks are cloned under /etc/komodo/stacks
+      ## Specify the Periphery agent root directory.
+      ## Must be the same inside and outside the container,
+      ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
+      ## Default: /etc/komodo.
+      - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+      ## Optionally mount a custom periphery.config.toml
+      # - /path/to/periphery.config.toml:/config/config.toml
+      ## Optionally mount custom root CA certificate to trust
+      # - /path/to/root_ca.crt:/usr/local/share/ca-certificates/root_ca.crt
 
 volumes:
   keys:
