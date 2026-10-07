@@ -52,9 +52,9 @@ Design and threat model: [docs/agent-access.md](docs/agent-access.md).
 |------|------|----|------|---------|
 | pvehost | Proxmox host | 192.168.1.148 | — | Hypervisor |
 | vault | LXC | 192.168.1.172 | 100 | HashiCorp Vault |
-| docker-prod | LXC | 192.168.1.224 | 101 | Docker (Portainer agent :9001) |
+| docker-prod | LXC | 192.168.1.224 | 101 | Docker (Komodo Periphery) |
 | agents | LXC | 192.168.1.226 | 102 | AI agents box: herdr + Collie + CodexBar (was docker-dev; see docs/agents.md) |
-| docker-tower | LXC | 192.168.1.248 | 104 | Docker primary (Portainer UI :9443) |
+| docker-tower | LXC | 192.168.1.248 | 104 | Docker + Komodo Core (`:9120`, UI `https://komodo.$DOMAIN`) + Periphery |
 | jellyfin | LXC | 192.168.1.174 | 201 | Media server |
 | warpgate | LXC | 192.168.1.227 | 106 | Warpgate SSH gateway for agents: SSH :2222, admin UI https://warpgate.homelab.lan:8888 (see docs/agent-access.md) |
 | pbs | LXC | 192.168.1.251 | 105 | Proxmox Backup Server 3.4.8 (primary, pbs-lxc storage, homelab-backups datastore 3TB HDD) |
@@ -70,7 +70,7 @@ External access via **Cloudflare Tunnel** (selective services only).
 | Priority | Method | Use when |
 |----------|--------|----------|
 | 1 | **Proxmox API** | Reading node/LXC/storage/network/firewall state |
-| 2 | **Portainer API** | Anything Docker: containers, stacks, logs, exec, images, networks, volumes |
+| 2 | **Komodo** | Stacks and containers on both Docker hosts: state, logs, deploys (see below) |
 | 3 | **Local CLIs** | `promtool` (Prometheus queries), `logcli` (Loki log queries), `grafanactl` (Grafana dashboards/datasources) |
 | 4 | **SSH `docker-prod` / `docker-tower`** | Reading files inside LXCs that aren't exposed via API |
 | 5 | **SSH `homelab`** | Reading Proxmox host files not exposed via API |
@@ -95,25 +95,22 @@ Key endpoints:
 - `GET /api2/json/nodes/{node}/storage` — storage pools
 - `GET /api2/json/cluster/resources` — all resources in one call
 
-### Portainer API (full access)
-Base URL: `https://$PORTAINER_HOST:$PORTAINER_PORT`
-```bash
-source .env
-curl -sk -H "x-api-key: $PORTAINER_TOKEN" \
-  https://$PORTAINER_HOST:$PORTAINER_PORT/api/<endpoint>
-```
+### Komodo (Docker stacks, since 2026-10-07)
+Every stack is a Komodo stack that deploys `docker-compose/<dir>/docker-compose.yml` from `main`, with
+the same compose project name it always had. Portainer is gone (`docs/komodo-migration.md`).
 
-Key endpoints:
-- `GET  /api/endpoints` — list Docker environments
-- `GET  /api/endpoints/{id}/docker/containers/json` — list containers
-- `GET  /api/endpoints/{id}/docker/containers/{id}/logs?stdout=true&stderr=true&tail=100` — container logs
-- `POST /api/endpoints/{id}/docker/containers/{id}/exec` — exec into container
-- `GET  /api/stacks` — list all stacks
-- `POST /api/stacks/create/standalone/string?endpointId={id}` — deploy stack
-- `PUT  /api/stacks/{id}?endpointId={id}` — update stack
-- `PUT  /api/stacks/{id}/git/redeploy?endpointId={id}` — redeploy git-backed stack
-
-Known endpoint IDs: `2` = docker-tower (local), `3` = docker-prod (agent), `4` = docker-dev (retired — LXC 102 is now `agents`, no Portainer agent)
+- **Change a stack:** edit its compose file in a PR. On merge, `apply.yml` (after the owner approves the
+  deployment) calls Komodo `DeployStack` for every stack whose directory changed. Exception: `ops`
+  (the runner itself) is deployed from the Komodo UI.
+- **Env/secrets** live in each Komodo stack's config, not in git. Only the owner edits them (Komodo UI).
+  Reading a stack's config shows its env values, so agents get **Server** read + logs only, never Stack read.
+- **API:** `POST $KOMODO_URL/{read|write|execute}/<Type>` with JSON params and headers `x-api-key` +
+  `x-api-secret` (`KOMODO_URL=http://192.168.1.248:9120`). Types used here: `ListServers`,
+  `ListContainers {server}`, `ListStacks`, `ListStackServices {stack}`, `DeployStack {stack}`,
+  `GetUpdate {id}` (an update's id is `_id.$oid`). Reference: https://docs.rs/komodo_client
+- **Hosts:** servers `docker-tower`, `docker-prod`. Stacks on both hosts with the same name are
+  `network-tower` / `network-prod` (project `network`). Periphery terminals and container exec are
+  disabled: shells go through Warpgate.
 
 ### Cloudflare API (DNS + Tunnel)
 ```bash
@@ -135,7 +132,7 @@ curl -sS -H "Authorization: Bearer $CF_TOKEN" \
 ```
 
 ### Technitium DNS API (docker-tower, 192.168.1.248:5380)
-Technitium runs on docker-tower. Its container has no curl/wget, so use bash `/dev/tcp` from inside the container (via Portainer exec on endpoint 2) or call it directly from the WSL host.
+Technitium runs on docker-tower. Its container has no curl/wget, so call its API directly over the LAN (from WSL, or from a `pve-root` session with the tokens in `/root/homelab.env`).
 
 ```bash
 source .env
@@ -212,7 +209,7 @@ homelab/
 ├── AGENTS.md              # this file (read by every agent CLI)
 ├── site.example.env       # template for site.env (gitignored): DOMAIN and other identifying facts
 ├── .env                   # secrets on the owner's machine only — never commit
-├── docker-compose/<stack>/ # one dir per Portainer stack: docker-compose.yml + example.env (+ config/)
+├── docker-compose/<stack>/ # one dir per Komodo stack: docker-compose.yml + example.env (+ config/)
 ├── ops/                   # agent access: Warpgate setup and notifier, PR request runner, request guide
 ├── .github/workflows/     # apply.yml: applies approved PRs on the self-hosted runner
 ├── scripts/               # one-off and idempotent helpers (Kuma monitors, Technitium, restore test, Warpgate)
@@ -222,24 +219,17 @@ homelab/
 
 ## Common Tasks
 
-### Redeploy a Git-backed stack via Portainer API
-**Always include `env` in the body — omitting it wipes all stored env vars for that stack.**
+### Redeploy a stack (owner, outside the PR flow)
+Komodo UI → Stacks → `<stack>` → Deploy. Or via the API with the owner's key:
 ```bash
-source .env
-# Get stack ID and current env vars first
-STACK_ID=39
-EP_ID=3
-# Redeploy (env array from GET /api/stacks response)
-curl -sk -X PUT -H "x-api-key: $PORTAINER_TOKEN" -H "Content-Type: application/json" \
-  -d '{"pullImage":false,"prune":false,"env":[{"name":"KEY","value":"VALUE"}]}' \
-  https://$PORTAINER_HOST:$PORTAINER_PORT/api/stacks/$STACK_ID/git/redeploy?endpointId=$EP_ID
+curl -sS -X POST -H "Content-Type: application/json" -H "x-api-key: $KOMODO_API_KEY" -H "x-api-secret: $KOMODO_API_SECRET" \
+  -d '{"stack":"<stack>"}' "$KOMODO_URL/execute/DeployStack"
 ```
 
-### List stacks and env vars
+### List stacks and their containers
 ```bash
-source .env
-curl -sk -H "x-api-key: $PORTAINER_TOKEN" \
-  https://$PORTAINER_HOST:$PORTAINER_PORT/api/stacks | python3 -m json.tool | grep -E '"Id"|"Name"'
+curl -sS -X POST -H "Content-Type: application/json" -H "x-api-key: $KOMODO_API_KEY" -H "x-api-secret: $KOMODO_API_SECRET" \
+  -d '{}' "$KOMODO_URL/read/ListStacks" | python3 -c 'import sys,json;[print(s["name"], s["info"]["state"]) for s in json.load(sys.stdin)]'
 ```
 
 ### Query Proxmox nodes
@@ -267,7 +257,7 @@ Credentials go in a `terraform.tfvars` (gitignored).
 
 ## Traefik & Auth Patterns
 
-All services use `${DOMAIN}` for subdomain routing via Traefik labels. `DOMAIN` is set per-stack in the Portainer UI (never committed).
+All services use `${DOMAIN}` for subdomain routing via Traefik labels. `DOMAIN` is set per stack in Komodo's environment (never committed).
 
 ### Adding a new service — checklist
 
@@ -287,7 +277,7 @@ Steps 5–7 must be done for every new externally-accessible service, not just T
 
 | Client type | Auth approach | Forward auth safe? |
 |---|---|---|
-| Browser-only (Grafana, Portainer, Tandoor) | Authentik forward auth via Traefik | Yes |
+| Browser-only (Grafana, Komodo, Tandoor) | Authentik forward auth via Traefik | Yes |
 | Has mobile app with API (Immich, Vikunja) | Native OIDC only — keep app's built-in auth | **No — breaks mobile** |
 | Has API/sync client (Vaultwarden, CouchDB) | App's own auth | **No — breaks client** |
 | Proxmox | Native OIDC at node level, nothing to do with Traefik | N/A |
@@ -302,7 +292,7 @@ The middleware is defined on `authentik-server` in the `security` stack and refe
 
 ## Home Assistant Stack
 
-Stack name in Portainer: **haos** (endpoint 3, docker-prod). Compose file: `docker-compose/haos/docker-compose.yml`.
+Komodo stack: **haos** (server docker-prod). Compose file: `docker-compose/haos/docker-compose.yml`.
 
 ### Services
 
@@ -342,7 +332,7 @@ Tools → States. Automations are in `/docker/ha/automations.yaml`.
 
 ## Cameras / Frigate Stack
 
-Stack name in Portainer: **frigate** (ID 64, endpoint 3, docker-prod, web-editor stack — not Git-backed). Compose: `docker-compose/frigate/docker-compose.yml`. Seed config: `docker-compose/frigate/config/config.yml` → live at `/docker/frigate/config/config.yml` (push with `pct push 101`; Frigate 0.18 can also edit it from its Settings UI, so read the live file before overwriting). Frigate **0.18.0**, checked against the v0.18.0 docs.
+Komodo stack: **frigate** (server docker-prod, deploys from git). Compose: `docker-compose/frigate/docker-compose.yml`. Seed config: `docker-compose/frigate/config/config.yml` → live at `/docker/frigate/config/config.yml` (push with `pct push 101`; Frigate 0.18 can also edit it from its Settings UI, so read the live file before overwriting). Frigate **0.18.0**, checked against the v0.18.0 docs.
 
 ### Cameras
 
@@ -388,11 +378,11 @@ The `$DOMAIN` zone in Technitium is a **Forwarder** zone (→ 1.1.1.1). Local A 
 
 ## Rules
 
-- **API first, SSH last**: Always use Proxmox API / Portainer API / local CLIs before falling back to SSH. Never use `homelab-root` if there's an API or non-root SSH alternative. See Access Priority table above.
+- **API first, SSH last**: Always use Proxmox API / Komodo / local CLIs before falling back to SSH. Never use `homelab-root` if there's an API or non-root SSH alternative. See Access Priority table above.
 - **Never commit `.env` or any `*.env` file** (gitignored)
 - **Never commit `*.tfvars`** except `example.tfvars`
 - **Confirm before any destructive action**: stopping containers, deleting stacks, modifying Proxmox VMs
 - **Read before editing**: always read a config file before modifying it
 - `ai-agent` sudo is read-only — use root SSH only when writes to the host are needed
-- Portainer API token has full access — be careful with POST/PUT/DELETE calls
+- Komodo admin keys can deploy and change any stack — be careful with `write`/`execute` calls
 - When adding a new service: create a `docker-compose/<service-name>/` directory with a `docker-compose.yml` and `example.env`
