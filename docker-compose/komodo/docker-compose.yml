@@ -1,0 +1,51 @@
+# Komodo Core + MongoDB on docker-tower: replaces Portainer (docs/komodo-migration.md).
+# Bootstrapped outside Komodo (it can't deploy itself). Lives in /etc/komodo/core on docker-tower;
+# secrets are generated there into .env (root, 600) and never committed. Image: v2.3.3.
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: komodo-mongo
+    labels:
+      komodo.skip: ""   # keep Komodo's "stop all containers" away from its own database
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DATABASE_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
+
+  core:
+    image: ghcr.io/moghtech/komodo-core:2.3.3
+    container_name: komodo-core
+    init: true
+    restart: unless-stopped
+    labels:
+      komodo.skip: ""
+    depends_on: [mongo]
+    ports:
+      - "192.168.1.248:9120:9120"   # LAN only: Periphery agents connect out to it; users go via Traefik
+    env_file: .env                  # KOMODO_DATABASE_*, KOMODO_WEBHOOK_SECRET, KOMODO_JWT_SECRET, DOMAIN
+    environment:
+      KOMODO_DATABASE_ADDRESS: mongo:27017
+      KOMODO_HOST: https://komodo.${DOMAIN}
+      KOMODO_TITLE: homelab
+      TZ: Europe/London
+      KOMODO_LOCAL_AUTH: "true"
+      # No preset admin: the owner signs up first (first user becomes admin), then this flips to true.
+      KOMODO_DISABLE_USER_REGISTRATION: ${KOMODO_DISABLE_USER_REGISTRATION:-false}
+      KOMODO_ENABLE_NEW_USERS: "false"
+      KOMODO_DISABLE_NON_ADMIN_CREATE: "true"
+      KOMODO_TRANSPARENT_MODE: "false"
+      KOMODO_JWT_TTL: 1-day
+      KOMODO_MONITORING_INTERVAL: 15-sec
+      KOMODO_RESOURCE_POLL_INTERVAL: 1-hr
+    volumes:
+      - keys:/config/keys
+      - /docker/komodo/backups:/backups   # dated DB backups (Komodo's backup procedure); on /docker so PBS has them
+
+volumes:
+  mongo-data:
+  mongo-config:
+  keys:

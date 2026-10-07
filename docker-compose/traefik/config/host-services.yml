@@ -14,6 +14,13 @@ http:
       service: termix
       tls: {}
 
+    komodo:   # Komodo Core on docker-tower; LAN/tailnet only (no Cloudflare route), Komodo's own login
+      rule: 'Host(`komodo.{{ env "DOMAIN" }}`)'
+      entryPoints:
+        - websecure
+      service: komodo
+      tls: {}
+
   services:
     homeassistant:
       loadBalancer:
@@ -24,3 +31,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:8081"
+
+    komodo:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.248:9120"

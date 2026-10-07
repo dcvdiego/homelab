@@ -1,0 +1,29 @@
+# Komodo Periphery agent: one per Docker host (docker-tower, docker-prod). Connects OUT to Core,
+# so the host needs no inbound port. Lives in /etc/komodo/periphery on each host (not managed by
+# Komodo itself). Terminals and container exec are off: shells go through Warpgate only.
+services:
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:2.3.3
+    container_name: komodo-periphery
+    init: true
+    restart: unless-stopped
+    labels:
+      komodo.skip: ""
+    env_file: .env   # SERVER_NAME, PERIPHERY_ONBOARDING_KEY (only until the server is onboarded)
+    environment:
+      PERIPHERY_CORE_ADDRESS: ws://192.168.1.248:9120
+      PERIPHERY_CONNECT_AS: ${SERVER_NAME}
+      PERIPHERY_CORE_PUBLIC_KEYS: file:/config/keys/core.pub   # pinned to the first Core it meets
+      PERIPHERY_ROOT_DIRECTORY: /etc/komodo
+      PERIPHERY_DISABLE_TERMINALS: "true"
+      PERIPHERY_DISABLE_CONTAINER_TERMINALS: "true"
+      PERIPHERY_INCLUDE_DISK_MOUNTS: /etc/hostname,/docker
+      TZ: Europe/London
+    volumes:
+      - keys:/config/keys
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - /etc/komodo:/etc/komodo   # same path inside and out: stacks are cloned under /etc/komodo/stacks
+
+volumes:
+  keys:
