@@ -17,7 +17,7 @@ agents box (LXC 102)                                         Warpgate (LXC 106) 
   agent ── git push / gh pr (homelabsito) ──▶ GitHub PR
                 owner: review + merge, approve deployment (GitHub Mobile)
                       apply.yml ──▶ ops-runner (docker-tower) ─▶ ops → root (pve-root-ops) ▶ pvehost
-                                    └─ Portainer git redeploy, Cloudflare / Technitium APIs
+                                    └─ Komodo DeployStack, Cloudflare / Technitium APIs
 ```
 
 ## Why each piece exists
@@ -95,19 +95,17 @@ PR pipeline, also 2026-10-07:
   identifying strings.
 - Environment secrets: `OPS_SSH_KEY`, `CF_TOKEN`, `CF_ACCOUNT`, `CF_ZONE`, `CF_TUNNEL`,
   `TECHNITIUM_{TOWER,PROD}_TOKEN` (Technitium user `ops`, token `github-runner`), `NTFY_URL`,
-  `NTFY_TOKEN` (ntfy user `ops`, write-only `homelab-ops`). Variables: `PORTAINER_URL`,
-  `WARPGATE_KNOWN_HOSTS`. Anything identifying is a secret: step env is printed in public logs.
+  `NTFY_TOKEN` (ntfy user `ops`, write-only `homelab-ops`). Variables: `KOMODO_URL`,
+  `WARPGATE_KNOWN_HOSTS`. Also `KOMODO_API_KEY`/`KOMODO_API_SECRET` (Komodo service user `ops`, admin). Anything identifying is a secret: step env is printed in public logs.
 - Warpgate user `ops` (key = `OPS_SSH_KEY`, only from 192.168.1.248) → `pve-root-ops`.
-- Runner `homelab-ops` online: Portainer stack `ops` (id 66, endpoint 2), registration token
-  removed from the stack env afterwards. `ai-agent` on docker-tower moved to uid/gid 2001 so it
+- Runner `homelab-ops` online: Komodo stack `ops` on docker-tower (deploy it from the Komodo UI, not from a
+  job), registration token removed from the stack env afterwards. `ai-agent` on docker-tower moved to uid/gid 2001 so it
   doesn't share uid 1001 with the runner (it can read `/docker/ops/results`, not write it).
 
 - GitHub App `homelabsito` (id 5226933), registered with the manifest flow (the key went straight to
   the agents box) and installed on this repo only; agents box wired with `scripts/homelabsito-setup.sh`.
 
-Pending: `PORTAINER_TOKEN`: Portainer
-logins go through OAuth, so a password user `ops` can't exist and API keys can only be created from
-a browser session. Create one named `github-runner` on your user (My account → Access tokens).
+Portainer: decommissioned 2026-10-07 after the Komodo migration (`PORTAINER_TOKEN`/`PORTAINER_URL` removed).
 
 
 ## Setup: PR pipeline (unattended changes)
@@ -147,7 +145,7 @@ GitHub Mobile: turn on notifications for **Deployment reviews** and **Review req
 
 | Secret | How to make it |
 |---|---|
-| `PORTAINER_TOKEN` | Portainer → My account → Access tokens → `github-runner` (OAuth logins can't have a separate `ops` user); revoke it alone if it leaks |
+| `KOMODO_API_KEY`, `KOMODO_API_SECRET` | Komodo → Settings → Users → service user `ops` (admin) → Create API key |
 | `CF_TOKEN` | Cloudflare token: Zone DNS Edit (your zone) + Account Cloudflare Tunnel Edit, client IP filter = home WAN IP |
 | `TECHNITIUM_TOWER_TOKEN`, `TECHNITIUM_PROD_TOKEN` | On each instance: user `ops` with modify permission on the zones → Create API token |
 | `NTFY_TOKEN` | In the ntfy container: `ntfy user add ops`, `ntfy access ops homelab-ops wo`, `ntfy token add ops` |
@@ -158,9 +156,9 @@ ssh-keygen -t ed25519 -N '' -C ops-runner -f /tmp/ops
 gh secret set OPS_SSH_KEY --env homelab -R $R < /tmp/ops
 install -m 600 /tmp/ops.pub ~/.config/homelab/ops-runner.pub && shred -u /tmp/ops /tmp/ops.pub
 scripts/warpgate-setup.py                        # creates Warpgate user ops with that key
-for s in PORTAINER_TOKEN CF_TOKEN TECHNITIUM_TOWER_TOKEN TECHNITIUM_PROD_TOKEN NTFY_TOKEN; do
+for s in KOMODO_API_KEY KOMODO_API_SECRET CF_TOKEN TECHNITIUM_TOWER_TOKEN TECHNITIUM_PROD_TOKEN NTFY_TOKEN; do
   gh secret set $s --env homelab -R $R; done     # prompts for each value
-gh variable set PORTAINER_URL --env homelab -R $R --body https://192.168.1.248:9443
+gh variable set KOMODO_URL --env homelab -R $R --body http://192.168.1.248:9120
 printf %s "https://ntfy.$(sed -n 's/^DOMAIN=//p' site.env)" | gh secret set NTFY_URL --env homelab -R $R   # secret, not variable: step env shows in public logs
 gh variable set WARPGATE_KNOWN_HOSTS --env homelab -R $R --body "$(ssh-keyscan -p 2222 -t ed25519 192.168.1.227 2>/dev/null)"
 source ~/homelab/.env && for v in CF_ACCOUNT CF_ZONE CF_TUNNEL; do   # secrets too: identifying
@@ -173,10 +171,10 @@ For attended `pve-root` sessions that need the same APIs, keep copies of the wri
 ### 3. Deploy the ops stack (docker-tower)
 
 1. `ssh homelab-root 'pct exec 104 -- install -d -o 1001 -g 1001 -m 755 /docker/ops/results'`
-2. Portainer → endpoint 2 → Stacks → Add → Repository: this repo, `refs/heads/main`,
-   `docker-compose/ops/docker-compose.yml`, env
-   `RUNNER_TOKEN=$(gh api -X POST repos/$R/actions/runners/registration-token --jq .token)`.
-   **Leave GitOps auto-update off**, here and on every stack: redeploys go through `apply.yml`.
+2. Komodo needs to exist first (`docker-compose/komodo/`, bootstrapped outside Komodo). Then deploy the
+   runner once by hand on docker-tower: `cd /etc/komodo/ops && RUNNER_TOKEN=$(gh api -X POST
+   repos/$R/actions/runners/registration-token --jq .token) docker compose -p ops up -d --build`, and
+   register it in Komodo as stack `ops` (git, `docker-compose/ops`) without deploying.
 3. Once the runner shows as Idle (Settings → Actions → Runners), delete `RUNNER_TOKEN` from the stack env.
 
 ### 4. Agents box
@@ -194,7 +192,7 @@ Have an agent open a PR adding `ops/requests/<date>-hello.sh`:
 ```bash
 # Smoke test: read-only checks of every write path. Undo: nothing to undo.
 ssh -F "$OPS_SSH_CONFIG" pve pveversion
-curl -fsSk -H "x-api-key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/status" | jq -c .Version
+curl -fsS -X POST -H "Content-Type: application/json" -H "x-api-key: $KOMODO_API_KEY" -H "x-api-secret: $KOMODO_API_SECRET" -d "{}" "$KOMODO_URL/read/ListServers" | jq -r ".[].name"
 ```
 
 Approve the PR, merge, approve the deployment. ntfy (`homelab-ops`) reports the result; the agent

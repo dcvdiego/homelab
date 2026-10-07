@@ -164,15 +164,10 @@
         description: Media server LXC (201)
 
 - Docker:
-    - Portainer:
-        icon: portainer
-        href: https://192.168.1.248:9443
-        description: Docker management
-        widget:
-          type: portainer
-          url: https://192.168.1.248:9443
-          env: 2
-          key: {{HOMEPAGE_VAR_PORTAINER_KEY}}
+    - Komodo:
+        icon: komodo
+        href: https://komodo.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Docker stacks (git-backed, both hosts)
 
 - Network:
     - Traefik:

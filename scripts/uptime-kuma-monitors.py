@@ -25,7 +25,7 @@ MONITORS = [
     {"name": "InfluxDB",         "url": "http://192.168.1.224:8086/health",      "parent_name": "Monitoring"},
     {"name": "Uptime Kuma",      "url": "http://192.168.1.224:3001",             "parent_name": "Monitoring"},
     # --- Infrastructure ---
-    {"name": "Portainer",        "url": "https://192.168.1.248:9443",            "parent_name": "Infrastructure"},
+    {"name": "Komodo",           "url": "http://192.168.1.248:9120",             "parent_name": "Infrastructure"},
     {"name": "Proxmox",          "url": "https://192.168.1.148:8006",            "parent_name": "Infrastructure"},
     {"name": "Authentik",        "url": "http://192.168.1.224:9000/-/health/ready/", "parent_name": "Infrastructure"},
     # --- DNS (see docs/networking.md#dns-failure-modes) ---
