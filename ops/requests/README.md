@@ -21,7 +21,6 @@ owner isn't watching; for live work use `ssh pve-root` instead (see AGENTS.md).
 
 | Variable | What |
 |---|---|
-| `PORTAINER_URL`, `PORTAINER_TOKEN` | Portainer API, full access |
 | `CF_TOKEN`, `CF_ACCOUNT`, `CF_ZONE`, `CF_TUNNEL` | Cloudflare DNS edit + tunnel config for the zone |
 | `TECHNITIUM_TOWER_TOKEN`, `TECHNITIUM_PROD_TOKEN` | Technitium API tokens for `192.168.1.248:5380` and `192.168.1.224:5380` |
 | `KOMODO_URL`, `KOMODO_API_KEY`, `KOMODO_API_SECRET` | Komodo API (service user `ops`, admin) |
