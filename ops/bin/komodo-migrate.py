@@ -5,11 +5,12 @@ Runs on the homelab-ops runner from an ops request; prints names, never env valu
 
   komodo-migrate.py check   <stack>@<server> ...   read-only: drift between Portainer's live compose
                                                    file and the repo, and the env var names
-  komodo-migrate.py migrate <stack>@<server>[+drift] ...   create the Komodo stack from git (same compose
+  komodo-migrate.py migrate <stack>@<server>[+drift[=a,b]] ...   create the Komodo stack from git (same compose
                                                    project name, env copied from Portainer), deploy,
                                                    report which services were recreated
 
-<server> is the Komodo server name (docker-tower, docker-prod). The Komodo stack is named after the
+<server> is the Komodo server name (docker-tower, docker-prod). "+drift" accepts any drift the owner
+reviewed; "+drift=a,b" accepts it only if every drift line contains "a" or "b". The Komodo stack is named after the
 Portainer stack, with "-<server>" appended when the same name exists on both hosts (network).
 Deploys never pull images (auto_pull off), so adopting a stack doesn't upgrade it. The Portainer
 stack is left as is: never redeploy it from Portainer afterwards (compose would fight Komodo).
@@ -71,15 +72,6 @@ def drift(live, repo):
     return [mask(l) for l in d]
 
 
-def containers(server, project):
-    out = {}
-    for c in komodo("read", "ListContainers", {"server": server}) or []:   # "ListDockerContainers" before v2.3.0
-        labels = c.get("labels") or {}
-        if labels.get("com.docker.compose.project") == project:
-            out[labels.get("com.docker.compose.service", c.get("name"))] = c.get("id")
-    return out
-
-
 def wait(update):
     uid = update["_id"]["$oid"]   # Update ids serialize as {"_id": {"$oid": ...}}
     for _ in range(180):
@@ -97,8 +89,10 @@ def main():
     servers = {s["name"]: s["id"] for s in komodo("read", "ListServers", {"limit": 500})}
     rc = 0
     for t in targets:
-        accept_drift = t.endswith("+drift")          # owner reviewed the drift; repo is the intended state
-        name, server = t.removesuffix("+drift").split("@")
+        t, _, accept = t.partition("+drift")         # owner reviewed the drift; repo is the intended state
+        allowed = [x for x in accept.removeprefix("=").split(",") if x]
+        accept_drift = bool(_)
+        name, server = t.split("@")
         ps = [s for s in stacks if s["Name"] == name and s["EndpointId"] == ENDPOINTS[server]]
         if len(ps) != 1:
             print(f"!! {t}: {len(ps)} Portainer stacks match"); rc = 1; continue
@@ -115,11 +109,11 @@ def main():
             print(f"     {l}")
         if mode == "check":
             continue
-        if d and not accept_drift:
-            print("   SKIP: live compose differs from the repo; sync the repo first (or mark it +drift)"); rc = 1; continue
+        unexpected = [l for l in d if not accept_drift or (allowed and not any(a in l for a in allowed))]
+        if unexpected:
+            print(f"   SKIP: {len(unexpected)} drift line(s) not accepted; sync the repo first (or mark it +drift[=...])"); rc = 1; continue
         if server not in servers:
             print(f"   SKIP: Komodo server {server} not found"); rc = 1; continue
-        before = containers(server, name)
         config = {"server_id": servers[server], "project_name": name,
                   "git_provider": "github.com", "git_https": True, "repo": REPO, "branch": "main",
                   "run_directory": f"docker-compose/{name}", "file_paths": ["docker-compose.yml"],
@@ -132,12 +126,17 @@ def main():
         else:
             komodo("write", "CreateStack", {"name": kname, "config": config})
             print("   Komodo stack created")
+        t0 = time.time()
         u = wait(komodo("execute", "DeployStack", {"stack": kname}))
-        after = containers(server, name)
-        recreated = sorted(s for s in after if before.get(s) != after[s])
-        ok = u.get("success")
-        print(f"   deploy: {'ok' if ok else 'FAILED'}; services {len(after)}/{len(before)} running before/after; "
+        svcs = komodo("read", "ListStackServices", {"stack": kname}) or []
+        ctr = lambda x: x.get("container") or {}
+        recreated = sorted(x["service"] for x in svcs if (ctr(x).get("created") or 0) >= t0 - 5)
+        running = [x["service"] for x in svcs if str(ctr(x).get("state", "")).lower() == "running"]
+        ok = u.get("success") and len(running) == len(svcs)
+        print(f"   deploy: {'ok' if u.get('success') else 'FAILED'}; running {len(running)}/{len(svcs)}; "
               f"recreated: {', '.join(recreated) or 'none'}")
+        if len(running) != len(svcs):
+            print(f"   NOT RUNNING: {', '.join(sorted({x['service'] for x in svcs} - set(running)))}")
         if not ok:
             rc = 1
             for log in u.get("logs", [])[-3:]:
