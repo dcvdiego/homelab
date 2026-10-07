@@ -54,6 +54,9 @@ if os.environ.get("KOMODO_URL"):
         if run_dir not in changed_dirs:
             continue
         handled.add(run_dir)
+        if run_dir == "docker-compose/ops":   # the runner itself: redeploying from this job would kill it
+            print(f"::warning::{run_dir} changed: deploy the '{ks['name']}' stack from the Komodo UI")
+            continue
         try:
             u = komodo("execute", "DeployStack", {"stack": ks["name"]})
             uid = u["_id"]["$oid"]
