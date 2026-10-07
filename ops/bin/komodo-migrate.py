@@ -10,7 +10,8 @@ Runs on the homelab-ops runner from an ops request; prints names, never env valu
                                                    report which services were recreated
 
 <server> is the Komodo server name (docker-tower, docker-prod). "+drift" accepts any drift the owner
-reviewed; "+drift=a,b" accepts it only if every drift line contains "a" or "b". The Komodo stack is named after the
+reviewed; "+drift=a,b" accepts it only if every drift line contains "a" or "b". "+nodeploy" creates the
+Komodo stack without deploying it (used for the runner's own stack: deploying it from a job kills the job). The Komodo stack is named after the
 Portainer stack, with "-<server>" appended when the same name exists on both hosts (network).
 Deploys never pull images (auto_pull off), so adopting a stack doesn't upgrade it. The Portainer
 stack is left as is: never redeploy it from Portainer afterwards (compose would fight Komodo).
@@ -89,7 +90,8 @@ def main():
     servers = {s["name"]: s["id"] for s in komodo("read", "ListServers", {"limit": 500})}
     rc = 0
     for t in targets:
-        t, _, accept = t.partition("+drift")         # owner reviewed the drift; repo is the intended state
+        no_deploy = "+nodeploy" in t                 # register only (e.g. the runner's own stack)
+        t, _, accept = t.replace("+nodeploy", "").partition("+drift")   # owner reviewed the drift
         allowed = [x for x in accept.removeprefix("=").split(",") if x]
         accept_drift = bool(_)
         name, server = t.split("@")
@@ -126,6 +128,8 @@ def main():
         else:
             komodo("write", "CreateStack", {"name": kname, "config": config})
             print("   Komodo stack created")
+        if no_deploy:
+            print("   registered only (+nodeploy): deploy it from the Komodo UI when its files change"); continue
         t0 = time.time()
         u = wait(komodo("execute", "DeployStack", {"stack": kname}))
         svcs = komodo("read", "ListStackServices", {"stack": kname}) or []
