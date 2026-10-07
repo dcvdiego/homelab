@@ -14,6 +14,15 @@ http:
       service: termix
       tls: {}
 
+    homepage:
+      rule: 'Host(`home.{{ env "DOMAIN" }}`)'
+      entryPoints:
+        - websecure
+      service: homepage
+      tls: {}
+      # middlewares:
+      #   - authentik-forwardauth@docker  # enable after Authentik Proxy Provider is configured for home.$DOMAIN
+
     komodo:   # Komodo Core on docker-tower; LAN/tailnet only (no Cloudflare route), Komodo's own login
       rule: 'Host(`komodo.{{ env "DOMAIN" }}`)'
       entryPoints:
@@ -31,6 +40,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:8081"
+
+    homepage:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.248:3000"
 
     komodo:
       loadBalancer:
