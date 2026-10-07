@@ -8,7 +8,7 @@ which holds the host keys, enforces who may reach what, and records every sessio
 |---|---|---|---|
 | **Read** | always | `ssh pve-ro`, `docker-prod-ro`, `docker-tower-ro` (read-only `ai-agent`); Prometheus/Loki | no |
 | **Attended change** | the owner is watching (debugging, upgrades) | `ssh pve-root`: owner approves on the phone, the approval lasts up to 1 h, the session can be watched live | yes, until approved |
-| **Unattended change** | the owner is away | PR from the bot `homelabsito`; owner approves the diff and the deployment later; the runner applies it through Warpgate (`pve-root-ops`) | **no**: it opens the PR and moves on |
+| **Unattended change** | the owner is away | PR from the GitHub App `homelabsito[bot]`; owner approves the diff and the deployment later; the runner applies it through Warpgate (`pve-root-ops`) | **no**: it opens the PR and moves on |
 
 ```
 agents box (LXC 102)                                         Warpgate (LXC 106)            hosts
@@ -28,7 +28,7 @@ agents box (LXC 102)                                         Warpgate (LXC 106) 
 | Warpgate holds every host key; users limited by key **and** source IP | Stealing the agent's key from elsewhere does nothing; one place to revoke; every session recorded |
 | `ai-agent` read-only: groups for logs, exact sudo commands, no `docker` group | The read targets can't be turned into root (the old `sudo cat /etc/*` and `sudo journalctl` rules could) |
 | `pve-root` needs approval per session, ntfy push to the phone | Root only while the owner has said yes and can watch |
-| Bot account `homelabsito` + branch protection | The bot can push branches and open PRs; it can't merge or approve deployments |
+| GitHub App `homelabsito` (Contents + Pull requests write, this repo only) + branch protection | The app can push branches and open PRs with 1-hour tokens; it can't merge (needs the owner's review), approve deployments or touch workflows. Its key lives only on the agents box |
 | Environment `homelab` with the owner as required reviewer | API write secrets and the ops key reach only jobs from `main` that the owner approved |
 | Runner `job-started.sh` guard | Refuses anything except `apply.yml` on `main`: fork PRs on this public repo can't run code on the runner |
 | `ops` Warpgate user only from 192.168.1.248, key only in GitHub | A leaked ops key is useless off docker-tower; unattended runs are recorded like any session |
@@ -102,7 +102,10 @@ PR pipeline, also 2026-10-07:
   removed from the stack env afterwards. `ai-agent` on docker-tower moved to uid/gid 2001 so it
   doesn't share uid 1001 with the runner (it can read `/docker/ops/results`, not write it).
 
-Pending: the `homelabsito` account and its token (browser only), and `PORTAINER_TOKEN`: Portainer
+- GitHub App `homelabsito` (id 5226933), registered with the manifest flow (the key went straight to
+  the agents box) and installed on this repo only; agents box wired with `scripts/homelabsito-setup.sh`.
+
+Pending: `PORTAINER_TOKEN`: Portainer
 logins go through OAuth, so a password user `ops` can't exist and API keys can only be created from
 a browser session. Create one named `github-runner` on your user (My account → Access tokens).
 
@@ -115,10 +118,11 @@ Run from WSL. Steps 1, 2 and 4 need the owner (accounts, tokens).
 
 ```bash
 R=dcvdiego/homelab
-# a) Create the homelabsito account in a browser (own email, 2FA on), then invite it:
-gh api -X PUT repos/$R/collaborators/homelabsito -f permission=push
-#    Accept the invite as homelabsito. Create a *classic* PAT for it with only `public_repo`
-#    (not `workflow`, so it can't change .github/workflows).
+# a) GitHub App homelabsito: registering an app always needs one browser click (manifest flow:
+#    a form POSTs the prefilled manifest, GitHub redirects back with a code, and
+#    `gh api -X POST app-manifests/<code>/conversions` returns the app id and private key).
+#    Permissions: contents write, pull_requests write, metadata read; webhook off; private.
+#    Install it on this repo only: https://github.com/apps/homelabsito/installations/new
 
 # b) Protect main
 gh api -X PUT repos/$R/branches/main/protection --input - <<'EOF2'
@@ -179,9 +183,8 @@ For attended `pve-root` sessions that need the same APIs, keep copies of the wri
 
 ```bash
 ssh agents
-gh auth login --with-token <<< '<homelabsito PAT>' && gh auth setup-git
-git -C ~/homelab config user.name homelabsito
-git -C ~/homelab config user.email '<id>+homelabsito@users.noreply.github.com'
+# ~/.config/homelabsito/{app-id,app.pem} (600) from the app registration, gh from brew, then:
+~/homelab/scripts/homelabsito-setup.sh 339260501    # homelabsito[bot]'s user id
 ```
 
 ### 5. End-to-end test

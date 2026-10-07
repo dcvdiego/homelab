@@ -21,9 +21,11 @@ credentials or copy them in. Everything goes through Warpgate (LXC 106) or unaut
 
 ### Changes while the owner is away: PR
 
-1. Commit on a branch in `~/homelab`: compose edits under `docker-compose/`, anything else as a
+1. Branch from fresh main (`git fetch origin && git switch -c <branch> origin/main`; a stale main
+   carries old workflow files and GitHub refuses the push) and commit in `~/homelab`: compose edits under `docker-compose/`, anything else as a
    script in `ops/requests/` (read `ops/requests/README.md` first).
-2. `git push -u origin <branch>` and `gh pr create` (as the bot account `homelabsito`). Say in the
+2. `git push -u origin <branch>` and `gh pr create`. Inside `~/homelab` both act as the GitHub App `homelabsito[bot]` (1-hour tokens,
+   this repo only, no merge rights). Say in the
    PR what it changes, why, and how to undo it.
 3. Stop there. The owner reviews the diff, merges, and approves the deployment from the phone.
    The runner applies it; read the output afterwards with

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Print a GitHub installation token for the homelabsito GitHub App, limited to this repo and to
+# contents + pull requests (write). Tokens last 1 h; this caches one and mints a new one 5 min
+# before expiry. Only needs openssl, curl, python3.
+#
+# Files (agents box): ~/.config/homelabsito/{app-id,app.pem}; token cache alongside (mode 600).
+# Used by: git (credential helper) and the `gh` wrapper, see scripts/homelabsito-setup.sh.
+set -euo pipefail
+dir="${HOMELABSITO_DIR:-$HOME/.config/homelabsito}"
+repo="${HOMELABSITO_REPO:-dcvdiego/homelab}"
+cache="$dir/token.json"
+now=$(date +%s)
+
+field() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$1" "$2"; }
+expiry() { python3 -c 'import json,sys,datetime; print(int(datetime.datetime.fromisoformat(json.load(open(sys.argv[1]))["expires_at"].replace("Z","+00:00")).timestamp()))' "$1"; }
+
+if [ -f "$cache" ] && [ "$(expiry "$cache" 2>/dev/null || echo 0)" -gt $((now + 300)) ]; then
+  field "$cache" token; exit 0
+fi
+
+# App JWT (RS256), valid 9 min, backdated 60 s for clock skew.
+b64() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+header=$(printf '{"alg":"RS256","typ":"JWT"}' | b64)
+payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' $((now - 60)) $((now + 540)) "$(cat "$dir/app-id")" | b64)
+jwt="$header.$payload.$(printf '%s.%s' "$header" "$payload" | openssl dgst -sha256 -sign "$dir/app.pem" | b64)"
+
+api() { curl -fsS -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" "$@"; }
+inst=$(api "https://api.github.com/repos/$repo/installation" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+(umask 077
+ api -X POST "https://api.github.com/app/installations/$inst/access_tokens" \
+   -d "{\"repositories\":[\"${repo#*/}\"],\"permissions\":{\"contents\":\"write\",\"pull_requests\":\"write\"}}" > "$cache.tmp"
+ mv "$cache.tmp" "$cache")
+field "$cache" token
