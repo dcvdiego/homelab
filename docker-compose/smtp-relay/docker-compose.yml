@@ -4,12 +4,12 @@ services:
     container_name: smtp-relay
     restart: unless-stopped
     environment:
-      LOCAL_ADDRESS: 0.0.0.0
-      RELAY_FROM_HOSTS: 172.16.0.0/12
-      SMARTHOST_ADDRESS: mail.smtp2go.com
-      SMARTHOST_PORT: "2525"
-      SMARTHOST_AUTH_USERNAME: ${SMTP2GO_USER}
-      SMARTHOST_AUTH_PASSWORD: ${SMTP2GO_PASSWORD}
+      # Names as read by the image's exim.conf (github.com/devture/exim-relay). SMARTHOST is host::port.
+      HOSTNAME: smtp-relay.homelab.lan   # HELO name; Gmail drops connections with an empty one
+      RELAY_FROM_HOSTS: 172.16.0.0/12    # Docker networks on this host
+      SMARTHOST: mail.smtp2go.com::2525
+      SMTP_USERNAME: ${SMTP2GO_USER}
+      SMTP_PASSWORD: ${SMTP2GO_PASSWORD}
 
 networks:
   default:
