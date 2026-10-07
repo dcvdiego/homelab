@@ -5,7 +5,7 @@ Runs on the homelab-ops runner from an ops request; prints names, never env valu
 
   komodo-migrate.py check   <stack>@<server> ...   read-only: drift between Portainer's live compose
                                                    file and the repo, and the env var names
-  komodo-migrate.py migrate <stack>@<server> ...   create the Komodo stack from git (same compose
+  komodo-migrate.py migrate <stack>@<server>[+drift] ...   create the Komodo stack from git (same compose
                                                    project name, env copied from Portainer), deploy,
                                                    report which services were recreated
 
@@ -63,7 +63,8 @@ def env_file(env):
 
 def drift(live, repo):
     """Changed lines; values masked except image tags: enough to judge, nothing secret."""
-    mask = lambda l: l.rstrip() if re.match(r"^[+-]\s*image:", l) else re.sub(r"([:=]\s*).+", r"\1…", l.rstrip())
+    # image tags and bind-mount paths are shown as-is; everything else after ":" or "=" is masked
+    mask = lambda l: l.rstrip() if re.match(r"^[+-]\s*(image:|- /)", l) else re.sub(r"([:=]\s*).+", r"\1…", l.rstrip())
     norm = lambda s: [l.rstrip() for l in s.strip().splitlines() if l.strip() and not l.strip().startswith("#")]
     d = [l for l in difflib.unified_diff(norm(live), norm(repo), "portainer", "repo", lineterm="", n=0)
          if l[:1] in "+-" and not l.startswith(("+++", "---"))]
@@ -96,7 +97,8 @@ def main():
     servers = {s["name"]: s["id"] for s in komodo("read", "ListServers", {"limit": 500})}
     rc = 0
     for t in targets:
-        name, server = t.split("@")
+        accept_drift = t.endswith("+drift")          # owner reviewed the drift; repo is the intended state
+        name, server = t.removesuffix("+drift").split("@")
         ps = [s for s in stacks if s["Name"] == name and s["EndpointId"] == ENDPOINTS[server]]
         if len(ps) != 1:
             print(f"!! {t}: {len(ps)} Portainer stacks match"); rc = 1; continue
@@ -113,8 +115,8 @@ def main():
             print(f"     {l}")
         if mode == "check":
             continue
-        if d:
-            print("   SKIP: live compose differs from the repo; sync the repo first"); rc = 1; continue
+        if d and not accept_drift:
+            print("   SKIP: live compose differs from the repo; sync the repo first (or mark it +drift)"); rc = 1; continue
         if server not in servers:
             print(f"   SKIP: Komodo server {server} not found"); rc = 1; continue
         before = containers(server, name)

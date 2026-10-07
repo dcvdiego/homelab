@@ -73,6 +73,8 @@ services:
       DNS64: "0"
     volumes:
       - /docker/otbr/data:/data
+      # live had this; it was missing from the repo (found by the Komodo pre-migration check)
+      - /run/dbus:/run/dbus:ro
 
   # Matter server — drop-in replacement for archived python-matter-server (EOL June 2026)
   # HA WebSocket URL: ws://localhost:5580/ws
