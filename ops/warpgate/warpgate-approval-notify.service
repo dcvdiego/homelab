@@ -1,0 +1,20 @@
+[Unit]
+Description=ntfy push for pending Warpgate session approvals
+After=warpgate.service
+Wants=warpgate.service
+
+[Service]
+User=warpgate
+Group=warpgate
+EnvironmentFile=/etc/warpgate-notify.env
+ExecStart=/usr/bin/python3 /usr/local/lib/warpgate/approval-notify.py
+Restart=always
+RestartSec=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/warpgate/db
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

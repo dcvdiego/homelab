@@ -1,0 +1,20 @@
+# ops: GitHub Actions runner that applies agent PRs after the owner approves them (docs/agent-access.md).
+# Deploy on docker-tower (endpoint 2). It reaches hosts only through Warpgate (user `ops`, target
+# pve-root-ops), with a key that exists only in the GitHub "homelab" environment.
+services:
+  runner:
+    build: ./runner
+    container_name: ops-runner
+    restart: unless-stopped
+    environment:
+      - REPO=dcvdiego/homelab
+      - RUNNER_TOKEN=${RUNNER_TOKEN:-}   # only needed on first start; remove from the stack env afterwards
+    volumes:
+      - ops_runner:/home/runner          # runner registration + binaries (auto-updates persist)
+      - /docker/ops/results:/results     # request output; agents read it via `ssh docker-tower-ro` (owner uid 1001)
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+volumes:
+  ops_runner:

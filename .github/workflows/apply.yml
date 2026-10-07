@@ -1,0 +1,76 @@
+# Applies changes merged to main, after an approval in GitHub Mobile (environment "homelab").
+# Runs only on the homelab-ops runner (docker-compose/ops), whose job-started hook refuses
+# anything except this file on main. Setup and threat model: docs/agent-access.md.
+#
+# The repo is public, so job logs are public: steps print names and exit codes only.
+# Request output goes to /docker/ops/results/<run id>/ on docker-tower; agents read it with
+# `ssh docker-tower-ro cat /docker/ops/results/<run id>/<request>.log`.
+name: apply
+
+on:
+  push:
+    branches: [main]
+    paths: ["docker-compose/**", "ops/requests/**"]
+  workflow_dispatch:
+    inputs:
+      request:
+        description: "Re-run one request, e.g. ops/requests/2026-10-06-add-dns.sh"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homelab-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: [self-hosted, homelab-ops]
+    environment: homelab
+    timeout-minutes: 30
+    env:
+      BEFORE: ${{ github.event.before }}
+      REQUEST: ${{ inputs.request }}
+    steps:
+      # Plain git instead of actions/checkout: no third-party code runs next to the secrets.
+      - name: Checkout
+        run: |
+          rm -rf "$GITHUB_WORKSPACE"/* "$GITHUB_WORKSPACE"/.[!.]* 2>/dev/null || true
+          git clone --quiet "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_WORKSPACE"
+          git -C "$GITHUB_WORKSPACE" checkout --quiet "$GITHUB_SHA"
+
+      - name: Redeploy changed git-backed stacks
+        if: github.event_name == 'push'
+        env:
+          PORTAINER_URL: ${{ vars.PORTAINER_URL }}
+          PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+        run: python3 ops/bin/redeploy-stacks.py
+
+      - name: Run approved ops requests
+        env:
+          PORTAINER_URL: ${{ vars.PORTAINER_URL }}
+          PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+          CF_TOKEN: ${{ secrets.CF_TOKEN }}
+          CF_ACCOUNT: ${{ vars.CF_ACCOUNT }}
+          CF_ZONE: ${{ vars.CF_ZONE }}
+          CF_TUNNEL: ${{ vars.CF_TUNNEL }}
+          TECHNITIUM_TOWER_TOKEN: ${{ secrets.TECHNITIUM_TOWER_TOKEN }}
+          TECHNITIUM_PROD_TOKEN: ${{ secrets.TECHNITIUM_PROD_TOKEN }}
+          OPS_SSH_KEY: ${{ secrets.OPS_SSH_KEY }}
+          WARPGATE_KNOWN_HOSTS: ${{ vars.WARPGATE_KNOWN_HOSTS }}
+        run: ops/bin/run-requests.sh
+
+      - name: Notify
+        if: always()
+        env:
+          NTFY_URL: ${{ vars.NTFY_URL }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+          STATUS: ${{ job.status }}
+        run: |
+          [ -n "$NTFY_URL" ] || exit 0
+          curl -fsS -H "Authorization: Bearer $NTFY_TOKEN" -H "Title: homelab apply: $STATUS" \
+            -H "Tags: $([ "$STATUS" = success ] && echo white_check_mark || echo x)" \
+            -H "Click: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -d "Run $GITHUB_RUN_ID ($GITHUB_EVENT_NAME). Output: /docker/ops/results/$GITHUB_RUN_ID/" \
+            "$NTFY_URL/homelab-ops" >/dev/null
