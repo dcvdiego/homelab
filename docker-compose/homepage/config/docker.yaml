@@ -1,0 +1,10 @@
+docker-tower:
+  socket: /var/run/docker.sock
+
+# Requires a Docker socket proxy on docker-prod (192.168.1.224).
+# Add a tecnativa/docker-socket-proxy to the traefik stack on docker-prod
+# with port 2375 published, then uncomment below:
+#
+# docker-prod:
+#   host: 192.168.1.224
+#   port: 2375

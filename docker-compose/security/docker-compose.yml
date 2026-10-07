@@ -30,6 +30,7 @@ services:
       
   server:
     image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2024.10.2}
+    container_name: authentik-server
     restart: unless-stopped
     command: server
     environment:
@@ -43,12 +44,18 @@ services:
     volumes:
       - /docker/authentik/media:/media
       - /docker/authentik/custom-templates:/templates
-    ports:
-      - "${COMPOSE_PORT_HTTP:-9000}:9000"
-      - "${COMPOSE_PORT_HTTPS:-9443}:9443"
     depends_on:
       - postgresql
       - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=Host(`au.${DOMAIN}`)"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
+      - "traefik.http.services.authentik.loadbalancer.server.port=9000"
+      # Forward auth middleware — reference as authentik-forwardauth@docker in other stacks
+      - "traefik.http.middlewares.authentik-forwardauth.forwardauth.address=http://authentik-server:9000/outpost.goauthentik.io/auth/traefik"
+      - "traefik.http.middlewares.authentik-forwardauth.forwardauth.trustforwardheader=true"
+      - "traefik.http.middlewares.authentik-forwardauth.forwardauth.authresponseheaders=X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version"
   worker:
     image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2024.10.2}
     restart: unless-stopped
@@ -79,7 +86,7 @@ services:
 
 
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.2
     container_name: vaultwarden
     restart: unless-stopped
     environment:
@@ -87,8 +94,12 @@ services:
       ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN}
     volumes:
       - /docker/vw-data/:/data/
-    ports:
-      - 80:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`sec.${DOMAIN}`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+      # NOTE: Do NOT add Authentik forward auth — breaks Bitwarden mobile/browser extension
 
 volumes:
   database:

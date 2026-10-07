@@ -1,0 +1,52 @@
+services:
+  # Frigate NVR — object detection + recording for the Reolink NVR (3x PoE) and 2x WiFi cameras
+  # Docs: https://docs.frigate.video
+  # Config lives at /docker/frigate/config/config.yml (seed it from ./config/config.yml in this repo)
+  # Requires /dev/dri passed through to LXC 101 (Intel UHD 730 — shared with Jellyfin)
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    container_name: frigate
+    privileged: true # this may not be necessary for all setups (official example)
+    restart: unless-stopped
+    stop_grace_period: 30s # allow enough time to shut down the various services
+    shm_size: "512mb" # ~110MB needed for current detect streams per the docs' formula; 512mb leaves headroom
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128 # Intel iGPU: OpenVINO detection + QSV decode
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/frigate/config:/config
+      - /data/frigate:/media/frigate  # recordings/snapshots on the 16TB HDD pool
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    # Deviation from official example: 8971 not published on the host — served via Traefik (homelab convention)
+    ports:
+      # Unauthenticated API — bound to localhost only; HA (network_mode: host) uses http://127.0.0.1:5000
+      - "127.0.0.1:5000:5000"
+      - "8554:8554"          # go2rtc RTSP restream (HA / Advanced Camera Card)
+      - "8555:8555/tcp"      # WebRTC
+      - "8555:8555/udp"      # WebRTC
+    environment:
+      TZ: Europe/London
+      FRIGATE_NVR_IP: ${FRIGATE_NVR_IP}
+      FRIGATE_NVR_USER: ${FRIGATE_NVR_USER}
+      FRIGATE_NVR_PASSWORD: ${FRIGATE_NVR_PASSWORD}
+      FRIGATE_WIFI1_IP: ${FRIGATE_WIFI1_IP}
+      FRIGATE_WIFI2_IP: ${FRIGATE_WIFI2_IP}
+      FRIGATE_WIFI_USER: ${FRIGATE_WIFI_USER}
+      FRIGATE_WIFI_PASSWORD: ${FRIGATE_WIFI_PASSWORD}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frigate.rule=Host(`frigate.${DOMAIN}`)"
+      - "traefik.http.routers.frigate.entrypoints=websecure"
+      # Port 8971 = authenticated UI (Frigate's built-in login). Browser-only, so Authentik forward auth is also safe:
+      # - "traefik.http.routers.frigate.middlewares=authentik-forwardauth@docker"
+      - "traefik.http.services.frigate.loadbalancer.server.port=8971"  # plain HTTP — tls disabled in config.yml
+    networks:
+      - default
+
+networks:
+  default:
+    name: network_default
+    external: true

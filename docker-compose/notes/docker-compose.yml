@@ -13,25 +13,35 @@ services:
     ports:
       - 5984:5984
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.obsidian.rule=Host(`notesdb.${DOMAIN}`)"
+      - "traefik.http.routers.obsidian.entrypoints=websecure"
+      - "traefik.http.services.obsidian.loadbalancer.server.port=5984"
+      # NOTE: Obsidian sync client — do NOT add forward auth
 
   vikunja:
     image: vikunja/vikunja
     environment:
-      VIKUNJA_SERVICE_PUBLICURL: https://tasks.example.com
+      VIKUNJA_SERVICE_PUBLICURL: https://tasks.${DOMAIN}
       VIKUNJA_DATABASE_HOST: db
       VIKUNJA_DATABASE_PASSWORD: ${DB_PASSWORD}
       VIKUNJA_DATABASE_TYPE: mysql
       VIKUNJA_DATABASE_USER: vikunja
       VIKUNJA_DATABASE_DATABASE: vikunja
       VIKUNJA_SERVICE_JWTSECRET: ${VIKUNJA_JWT_SECRET}
-    ports:
-      - 3456:3456
     volumes:
       - /docker/vikunja/files:/app/vikunja/files
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vikunja.rule=Host(`tasks.${DOMAIN}`)"
+      - "traefik.http.routers.vikunja.entrypoints=websecure"
+      - "traefik.http.services.vikunja.loadbalancer.server.port=3456"
+      # NOTE: Has mobile app — avoid forward auth. Use Vikunja's native auth.
 
   db:
     image: mariadb:10
@@ -46,7 +56,7 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u $$MYSQL_USER --password=$$MYSQL_PASSWORD"]
-      interval: 2s
+      interval: 30s
       start_period: 30s
 
 networks:

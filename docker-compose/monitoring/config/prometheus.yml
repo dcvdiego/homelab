@@ -11,3 +11,11 @@ scrape_configs:
           - 192.168.1.148:9100  # pvehost (Proxmox)
         labels:
           env: homelab
+
+  - job_name: frigate
+    metrics_path: /api/metrics
+    static_configs:
+      - targets:
+          - frigate:5000  # frigate stack, network_default (5000 is not exposed on the host)
+        labels:
+          env: homelab

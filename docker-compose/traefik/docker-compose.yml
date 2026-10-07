@@ -1,0 +1,97 @@
+services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: traefik-socket-proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1
+      SERVICES: 1
+      NETWORKS: 1
+      TASKS: 1
+      EVENTS: 1
+    networks:
+      - socket-proxy
+
+  traefik:
+    image: traefik:v3
+    container_name: traefik
+    restart: unless-stopped
+    depends_on:
+      - socket-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      - DOMAIN=${DOMAIN}
+      - CROWDSEC_BOUNCER_KEY=${CROWDSEC_BOUNCER_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /docker/traefik/certs:/certs
+      - /docker/traefik/config:/config:ro
+      - /docker/traefik/logs:/var/log/traefik
+    command:
+      - "--global.sendanonymoususage=false"
+      - "--log.level=INFO"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.endpoint=tcp://socket-proxy:2375"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=network_default"
+      - "--providers.file.directory=/config"
+      - "--providers.file.watch=true"
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.forwardedHeaders.trustedIPs=127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.websecure.http.tls.certresolver=cloudflare"
+      - "--entrypoints.websecure.http.tls.domains[0].main=${DOMAIN}"
+      - "--entrypoints.websecure.http.tls.domains[0].sans=*.${DOMAIN}"
+      - "--entrypoints.websecure.forwardedHeaders.trustedIPs=127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      - "--entrypoints.websecure.http.middlewares=crowdsec@docker"
+      # TLS / ACME
+      - "--certificatesresolvers.cloudflare.acme.email=${CF_API_EMAIL}"
+      - "--certificatesresolvers.cloudflare.acme.storage=/certs/acme.json"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53"
+      # Access log to file — shared with CrowdSec via /docker/traefik/logs bind-mount
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--accesslog.bufferingsize=100"
+      # CrowdSec bouncer plugin (source: https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin)
+      - "--experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+      - "--experimental.plugins.bouncer.version=v1.5.1"
+    labels:
+      - "traefik.enable=true"
+      # Dashboard router
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
+      # Basic auth for dashboard (generate with: htpasswd -nb user pass | sed 's/\$/\$\$/g')
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_USERS}"
+      # CrowdSec middleware — defined here, applied globally via entrypoint once bootstrapped
+      # Label keys must be all-lowercase (official plugin requirement)
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.enabled=true"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdseclapikey=${CROWDSEC_BOUNCER_KEY}"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdseclapihost=crowdsec:8080"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecmode=stream"
+    networks:
+      - socket-proxy
+      - default
+
+networks:
+  socket-proxy:
+    name: traefik_socket_proxy
+    internal: true
+  default:
+    name: network_default
+    external: true

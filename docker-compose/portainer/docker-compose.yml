@@ -6,6 +6,13 @@ services:
     ports:
       - "8000:8000"
       - "9443:9443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      # To enable Authentik forward auth (browser-only, safe for Portainer):
+      # - "traefik.http.routers.portainer.middlewares=authentik-forwardauth@docker"
     volumes:
       - portainer_data:/data
       - /var/run/docker.sock:/var/run/docker.sock

@@ -1,0 +1,27 @@
+- General:
+    - GitHub:
+        icon: github
+        href: https://github.com
+        description: Code repositories
+    - Gmail:
+        icon: gmail
+        href: https://mail.google.com
+        description: Email
+    - Cloudflare:
+        icon: cloudflare
+        href: https://dash.cloudflare.com
+        description: DNS & tunnels
+    - Proxmox Docs:
+        icon: mdi-book-open-variant
+        href: https://pve.proxmox.com/pve-docs/
+        description: Proxmox documentation
+
+- Homelab Tools:
+    - Homepage Config:
+        icon: mdi-cog
+        href: https://github.com/gethomepage/homepage
+        description: Homepage documentation
+    - Dashboard Icons:
+        icon: mdi-palette
+        href: https://github.com/homarr-labs/dashboard-icons
+        description: Icon library for dashboards

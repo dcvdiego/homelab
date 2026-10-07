@@ -1,0 +1,26 @@
+services:
+  pbs:
+    image: ghcr.io/nikosch86/docker-proxmox-backup-server:v1.1.1-4.1.2
+    container_name: proxmox-backup-server
+    restart: unless-stopped
+    stop_signal: SIGHUP
+    ports:
+      - "${PBS_HOST_IP}:8007:8007"
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - /opt/pbs/etc:/etc/proxmox-backup
+      - /opt/pbs/logs:/var/log/proxmox-backup
+      - pbs_lib:/var/lib/proxmox-backup
+      - /opt/pbs/data:/mnt/backups
+    tmpfs:
+      - /run
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8007"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pbs_lib:

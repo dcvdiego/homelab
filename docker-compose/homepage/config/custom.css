@@ -1,0 +1,245 @@
+:root {
+  --monokai-black: #000000;
+  --monokai-bg: #1a1a1a;
+  --monokai-bg-card: #1e1e1e;
+  --monokai-bg-hover: #2a2a2a;
+  --monokai-bg-input: #111111;
+  --monokai-border: #2d2d2d;
+  --monokai-fg: #f8f8f2;
+  --monokai-comment: #75715e;
+  --monokai-yellow: #e6db74;
+  --monokai-green: #a6e22e;
+  --monokai-orange: #fd971f;
+  --monokai-red: #f92672;
+  --monokai-blue: #66d9ef;
+  --monokai-purple: #ae81ff;
+}
+
+body,
+.dark body,
+[class*="dark"] {
+  background-color: var(--monokai-black) !important;
+  color: var(--monokai-fg) !important;
+}
+
+.dark {
+  --page-bg: var(--monokai-black);
+  background-color: var(--monokai-black) !important;
+}
+
+.service-card,
+[class*="service-card"],
+[class*="ServiceCard"],
+[class*="bg-theme-900"],
+[class*="bg-theme-800"],
+[class*="bg-slate-900"],
+[class*="bg-slate-800"] {
+  background-color: var(--monokai-bg-card) !important;
+  border: 1px solid var(--monokai-border) !important;
+  border-radius: 12px !important;
+}
+
+.service-card:hover,
+[class*="service-card"]:hover,
+[class*="ServiceCard"]:hover {
+  background-color: var(--monokai-bg-hover) !important;
+  border-color: var(--monokai-comment) !important;
+}
+
+[class*="bookmark-card"],
+[class*="BookmarkCard"] {
+  background-color: var(--monokai-bg-card) !important;
+  border: 1px solid var(--monokai-border) !important;
+  border-radius: 12px !important;
+}
+
+[class*="bookmark-card"]:hover,
+[class*="BookmarkCard"]:hover {
+  background-color: var(--monokai-bg-hover) !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--monokai-fg) !important;
+}
+
+.group-header,
+[class*="group-header"],
+[class*="ListGroup"] > h2,
+[class*="ListGroup"] > div > h2 {
+  color: var(--monokai-yellow) !important;
+  font-weight: 600 !important;
+}
+
+a {
+  color: var(--monokai-blue) !important;
+  text-decoration: none !important;
+}
+
+a:hover {
+  color: var(--monokai-green) !important;
+}
+
+[class*="tabs"] [class*="active"],
+[class*="tab"][class*="active"],
+[class*="tab"][class*="selected"],
+[class*="Tabs"] button[class*="active"],
+[class*="Tabs"] button[class*="selected"] {
+  color: var(--monokai-yellow) !important;
+  border-bottom-color: var(--monokai-yellow) !important;
+}
+
+[class*="tab"]:not([class*="active"]):not([class*="selected"]),
+[class*="Tabs"] button:not([class*="active"]):not([class*="selected"]) {
+  color: var(--monokai-comment) !important;
+}
+
+[class*="tab"]:not([class*="active"]):not([class*="selected"]):hover,
+[class*="Tabs"] button:not([class*="active"]):not([class*="selected"]):hover {
+  color: var(--monokai-fg) !important;
+}
+
+input,
+textarea,
+select {
+  background-color: var(--monokai-bg-input) !important;
+  color: var(--monokai-fg) !important;
+  border: 1px solid var(--monokai-border) !important;
+  border-radius: 8px !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--monokai-blue) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(102, 217, 239, 0.2) !important;
+}
+
+::placeholder {
+  color: var(--monokai-comment) !important;
+}
+
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--monokai-black) !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--monokai-border) !important;
+  border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--monokai-comment) !important;
+}
+
+.status-dot,
+[class*="status-dot"],
+[class*="StatusDot"] {
+  box-shadow: none !important;
+}
+
+.ag-step-ready,
+[class*="ready"],
+.dot-good {
+  background-color: var(--monokai-green) !important;
+}
+
+.dot-warn,
+[class*="warn"] {
+  background-color: var(--monokai-orange) !important;
+}
+
+.dot-bad,
+[class*="bad"],
+.dot-down {
+  background-color: var(--monokai-red) !important;
+}
+
+[class*="widget"] [class*="label"],
+[class*="widget"] [class*="Label"],
+.widget-label {
+  color: var(--monokai-comment) !important;
+}
+
+[class*="widget"] [class*="value"],
+[class*="widget"] [class*="Value"],
+.widget-value {
+  color: var(--monokai-fg) !important;
+}
+
+[class*="description"],
+.service-description {
+  color: var(--monokai-comment) !important;
+}
+
+[class*="header"],
+.page-header {
+  background-color: var(--monokai-black) !important;
+}
+
+button {
+  color: var(--monokai-fg) !important;
+  background-color: transparent !important;
+  border: 1px solid var(--monokai-border) !important;
+  border-radius: 8px !important;
+}
+
+button:hover {
+  background-color: var(--monokai-bg-hover) !important;
+  border-color: var(--monokai-comment) !important;
+}
+
+hr,
+.divider {
+  border-color: var(--monokai-border) !important;
+}
+
+.collapse-toggle,
+[class*="collapse"] {
+  color: var(--monokai-comment) !important;
+}
+
+.collapse-toggle:hover,
+[class*="collapse"]:hover {
+  color: var(--monokai-yellow) !important;
+}
+
+.version-tag,
+[class*="version"] {
+  color: var(--monokai-comment) !important;
+}
+
+[class*="information-widget"],
+[class*="info-widget"] {
+  background-color: var(--monokai-bg-card) !important;
+  border: 1px solid var(--monokai-border) !important;
+  border-radius: 12px !important;
+}
+
+.search-bar,
+[class*="search"],
+[class*="Search"] input {
+  background-color: var(--monokai-bg-input) !important;
+  border: 1px solid var(--monokai-border) !important;
+}
+
+@layer utilities {
+  @media (max-width: 767.98px) {
+    .grid-cols-1 {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+}
+
+@layer utilities {
+  @media (min-width: 768px) and (max-width: 1023.98px) {
+    .grid-cols-1 {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+  }
+}

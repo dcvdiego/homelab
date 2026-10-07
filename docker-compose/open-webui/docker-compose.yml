@@ -1,0 +1,40 @@
+services:
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - /docker/ollama:/root/.ollama
+    # GPU passthrough (optional — requires NVIDIA Container Toolkit in LXC):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  open-webui:
+    container_name: open-webui
+    image: ghcr.io/open-webui/open-webui:latest
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    volumes:
+      - /docker/open-webui:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+      - WEBUI_URL=https://ai.${DOMAIN}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.open-webui.rule=Host(`ai.${DOMAIN}`)"
+      - "traefik.http.routers.open-webui.entrypoints=websecure"
+      - "traefik.http.services.open-webui.loadbalancer.server.port=8080"
+      # NOTE: Do NOT add authentik-forwardauth — Open WebUI has an OpenAI-compatible API
+      # used by external clients (Continue.dev, scripts, etc.). Native auth only.
+
+networks:
+  default:
+    name: network_default
+    external: true

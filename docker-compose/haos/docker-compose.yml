@@ -11,3 +11,84 @@ services:
     network_mode: host
     environment:
       TZ: Europe/London
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - /docker/mosquitto/config:/mosquitto/config:ro
+      - /docker/mosquitto/data:/mosquitto/data
+      - /docker/mosquitto/log:/mosquitto/log
+    networks:
+      - default
+
+  zigbee2mqtt:
+    image: ghcr.io/koenkk/zigbee2mqtt:latest
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    volumes:
+      - /docker/zigbee2mqtt/data:/app/data
+      - /run/udev:/run/udev:ro
+    environment:
+      TZ: Europe/London
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zigbee2mqtt.rule=Host(`zigbee2mqtt.${DOMAIN}`)"
+      - "traefik.http.routers.zigbee2mqtt.entrypoints=websecure"
+      - "traefik.http.services.zigbee2mqtt.loadbalancer.server.port=8080"
+    networks:
+      - default
+
+  # OpenThread Border Router — provides Thread network for Matter
+  # Official docs: https://openthread.io/guides/border-router/build-docker
+  # ZBT-2 working config: https://github.com/orgs/openthread/discussions/13290
+  otbr:
+    image: openthread/border-router:latest
+    container_name: otbr
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      OT_RCP_DEVICE: "spinel+hdlc+uart:///dev/ttyACM0?uart-baudrate=460800"
+      OT_INFRA_IF: eth0
+      INFRA_IF_NAME: eth0
+      OT_THREAD_IF: wpan0
+      OT_LOG_LEVEL: "4"
+      OT_REST_LISTEN_ADDR: "0.0.0.0"
+      OT_REST_LISTEN_PORT: "8083"
+      FIREWALL: "0"
+      NAT64: "0"
+      DNS64: "0"
+    volumes:
+      - /docker/otbr/data:/data
+
+  # Matter server — drop-in replacement for archived python-matter-server (EOL June 2026)
+  # HA WebSocket URL: ws://localhost:5580/ws
+  # Source: https://github.com/matter-js/matterjs-server
+  matter-server:
+    image: ghcr.io/matter-js/matterjs-server:stable
+    container_name: matter-server
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /docker/matter-server/data:/data
+      - /run/dbus:/run/dbus:ro
+    depends_on:
+      - otbr
+
+networks:
+  default:
+    name: network_default
+    external: true

@@ -1,0 +1,116 @@
+services:
+  zulip-database:
+    image: zulip/zulip-postgresql:14
+    container_name: zulip-database
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    secrets:
+      - zulip__postgres_password
+    environment:
+      POSTGRES_DB: zulip
+      POSTGRES_USER: zulip
+      POSTGRES_PASSWORD_FILE: /run/secrets/zulip__postgres_password
+    volumes:
+      - /docker/zulip/postgresql:/var/lib/postgresql/data
+
+  zulip-memcached:
+    image: memcached:alpine
+    container_name: zulip-memcached
+    restart: unless-stopped
+    command: memcached -m 64
+    mem_limit: 128m
+    memswap_limit: 128m
+
+  zulip-rabbitmq:
+    image: rabbitmq:4.2
+    container_name: zulip-rabbitmq
+    restart: unless-stopped
+    mem_limit: 256m
+    memswap_limit: 256m
+    command:
+      - "sh"
+      - "-euc"
+      - |
+        export RABBITMQ_DEFAULT_PASS="$$(cat $$RABBITMQ_PASSWORD_FILE)"
+        exec docker-entrypoint.sh rabbitmq-server
+    secrets:
+      - zulip__rabbitmq_password
+    environment:
+      RABBITMQ_DEFAULT_USER: zulip
+      RABBITMQ_PASSWORD_FILE: /run/secrets/zulip__rabbitmq_password
+    volumes:
+      - /docker/zulip/rabbitmq:/var/lib/rabbitmq
+
+  zulip-redis:
+    image: redis:alpine
+    container_name: zulip-redis
+    restart: unless-stopped
+    mem_limit: 128m
+    memswap_limit: 128m
+    command:
+      - "sh"
+      - "-euc"
+      - '/usr/local/bin/docker-entrypoint.sh --requirepass "$$(cat $$REDIS_PASSWORD_FILE)"'
+    secrets:
+      - zulip__redis_password
+    environment:
+      REDIS_PASSWORD_FILE: /run/secrets/zulip__redis_password
+    volumes:
+      - /docker/zulip/redis:/data
+
+  zulip:
+    image: ghcr.io/zulip/zulip-server:11.6-1
+    container_name: zulip
+    restart: unless-stopped
+    secrets:
+      - zulip__postgres_password
+      - zulip__rabbitmq_password
+      - zulip__redis_password
+      - zulip__secret_key
+    environment:
+      SETTING_REMOTE_POSTGRES_HOST: zulip-database
+      SETTING_MEMCACHED_LOCATION: zulip-memcached:11211
+      SETTING_RABBITMQ_HOST: zulip-rabbitmq
+      SETTING_REDIS_HOST: zulip-redis
+      SETTING_EXTERNAL_HOST: chat.${DOMAIN}
+      SETTING_ZULIP_ADMINISTRATOR: ${ZULIP_ADMIN_EMAIL}
+      CERTIFICATES: ""
+      LOADBALANCER_IPS: 172.16.0.0/12
+      QUEUE_WORKERS_MULTIPROCESS: "false"
+      SETTING_EMAIL_HOST: smtp-relay
+      SETTING_EMAIL_PORT: "8025"
+      SETTING_EMAIL_USE_TLS: "False"
+      SETTING_EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+      SETTING_SEND_LOGIN_EMAILS: "False"
+      SETTING_PUSH_NOTIFICATION_BOUNCER_URL: https://push.zulipchat.com
+      SETTING_ZULIP_SERVICE_PUSH_NOTIFICATIONS: "True"
+    mem_limit: 3g
+    memswap_limit: 3g
+    volumes:
+      - /docker/zulip/data:/data
+    depends_on:
+      - zulip-database
+      - zulip-memcached
+      - zulip-rabbitmq
+      - zulip-redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zulip.rule=Host(`chat.${DOMAIN}`)"
+      - "traefik.http.routers.zulip.entrypoints=websecure"
+      - "traefik.http.services.zulip.loadbalancer.server.port=80"
+
+secrets:
+  zulip__postgres_password:
+    file: /docker/zulip/secrets/postgres_password
+  zulip__rabbitmq_password:
+    file: /docker/zulip/secrets/rabbitmq_password
+  zulip__redis_password:
+    file: /docker/zulip/secrets/redis_password
+  zulip__secret_key:
+    file: /docker/zulip/secrets/secret_key
+
+networks:
+  default:
+    name: network_default
+    external: true

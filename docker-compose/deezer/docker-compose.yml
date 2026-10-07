@@ -7,21 +7,28 @@ services:
     volumes:
       - /data/music:/downloads
       - /docker/deemix:/config
-    ports:
-      - "6595:6595"
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.deemix.rule=Host(`deemix.${DOMAIN}`)"
+      - "traefik.http.routers.deemix.entrypoints=websecure"
+      - "traefik.http.services.deemix.loadbalancer.server.port=6595"
 
   navidrome:
     image: deluan/navidrome:latest
     user: 1000:1000
-    ports:
-      - "4533:4533"
     restart: unless-stopped
-
     volumes:
       - "/docker/navidrome:/data"
       - "/data/music:/music/diego:ro"
       - "/data/music_amirah:/music/amirah:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`music.${DOMAIN}`)"
+      - "traefik.http.routers.navidrome.entrypoints=websecure"
+      - "traefik.http.services.navidrome.loadbalancer.server.port=4533"
+      # NOTE: Navidrome has API clients (DSub, Symfonium) — do NOT add forward auth
+
   beets:
     image: lscr.io/linuxserver/beets:latest
     container_name: beets

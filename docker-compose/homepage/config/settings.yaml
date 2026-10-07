@@ -1,0 +1,82 @@
+title: Homelab
+theme: dark
+color: slate
+headerStyle: boxedWidgets
+iconStyle: theme
+target: _blank
+statusStyle: dot
+showStats: true
+fullWidth: true
+language: en
+hideVersion: false
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  showSearchSuggestions: true
+  provider: google
+
+layout:
+  Bookmarks:
+    style: row
+    columns: 6
+  Productivity:
+    tab: Apps
+    icon: mdi-briefcase-outline
+    style: row
+    columns: 4
+  Photos & Docs:
+    tab: Apps
+    icon: mdi-image-multiple-outline
+    style: row
+    columns: 3
+  Media:
+    tab: Apps
+    icon: mdi-filmstrip
+    style: row
+    columns: 5
+  Passwords:
+    tab: Apps
+    icon: mdi-key-variant
+    style: row
+    columns: 2
+  Smart Home:
+    tab: Apps
+    icon: mdi-home-automation
+    style: row
+    columns: 2
+  Hypervisor:
+    tab: Infrastructure
+    icon: mdi-server
+    style: row
+    columns: 3
+  Docker:
+    tab: Infrastructure
+    icon: mdi-docker
+    style: row
+    columns: 4
+  Network:
+    tab: Infrastructure
+    icon: mdi-network
+    style: row
+    columns: 4
+  Security:
+    tab: Infrastructure
+    icon: mdi-shield-lock-outline
+    style: row
+    columns: 3
+  Dashboards:
+    tab: Monitoring
+    icon: mdi-chart-box-outline
+    style: row
+    columns: 3
+  Logging:
+    tab: Monitoring
+    icon: mdi-file-document-outline
+    style: row
+    columns: 3
+  Uptime:
+    tab: Monitoring
+    icon: mdi-check-circle-outline
+    style: row
+    columns: 2

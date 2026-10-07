@@ -1,0 +1,37 @@
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2
+    container_name: ntfy
+    command: serve
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/London
+      - NTFY_BASE_URL=https://ntfy.${DOMAIN}
+      - NTFY_BEHIND_PROXY=true
+      - NTFY_CACHE_FILE=/var/cache/ntfy/cache.db
+      - NTFY_CACHE_DURATION=72h
+      - NTFY_ATTACHMENT_CACHE_DIR=/var/cache/ntfy/attachments
+      - NTFY_AUTH_FILE=/var/lib/ntfy/user.db
+      - NTFY_AUTH_DEFAULT_ACCESS=deny-all
+      - NTFY_ENABLE_LOGIN=true
+    volumes:
+      - /docker/ntfy/cache:/var/cache/ntfy
+      - /docker/ntfy/lib:/var/lib/ntfy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://localhost:80/v1/health -O - | grep -Eo '\"healthy\"\\s*:\\s*true' || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ntfy.rule=Host(`ntfy.${DOMAIN}`)"
+      - "traefik.http.routers.ntfy.entrypoints=websecure"
+      - "traefik.http.services.ntfy.loadbalancer.server.port=80"
+      # No Authentik forward auth: the Android app needs ntfy's own auth (see AGENTS.md auth table).
+      # External access: Cloudflare Access app for ntfy.${DOMAIN} with a Service Auth token used by the app.
+
+networks:
+  default:
+    name: network_default
+    external: true

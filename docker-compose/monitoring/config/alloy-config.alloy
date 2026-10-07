@@ -1,0 +1,100 @@
+// ============================================================================
+// Grafana Alloy configuration
+// Migrated from Promtail via: alloy convert --source-format=promtail
+// Sources: https://grafana.com/docs/alloy/latest/set-up/migrate/from-promtail/
+//          https://grafana.com/docs/alloy/latest/reference/components/loki/
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Docker container log discovery and relabeling
+// discovery.relabel is used as a rules provider — targets come from
+// discovery.docker directly; its rules are referenced by loki.source.docker.
+// ----------------------------------------------------------------------------
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+discovery.relabel "containers" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "logstream"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.docker.containers.targets
+  forward_to       = [loki.process.drop_noise.receiver]
+  relabel_rules    = discovery.relabel.containers.rules
+  refresh_interval = "5s"
+}
+
+// ----------------------------------------------------------------------------
+// System log files from /var/log
+// ----------------------------------------------------------------------------
+loki.source.file "system" {
+  targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/**/*log",
+    host        = "docker-prod",
+    job         = "varlogs",
+  }]
+  forward_to            = [loki.process.drop_noise.receiver]
+  legacy_positions_file = "/var/lib/alloy/data/positions.yaml"
+
+  file_match {
+    enabled = true
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Drop noisy log lines before they reach Loki.
+// Alloy equivalent of Promtail pipeline drop stages.
+// Checked against: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/
+// All sources feed through here before writing.
+// ----------------------------------------------------------------------------
+loki.process "drop_noise" {
+  // Drop DEBUG and TRACE lines — high volume, rarely useful for homelab diagnostics
+  stage.drop {
+    expression          = "(?i)(level|lvl|severity)=[\"']?(debug|trace)[\"']?"
+    drop_counter_reason = "debug_trace"
+  }
+
+  // Drop health-check and bot endpoint hits that pollute access logs
+  stage.drop {
+    expression          = "\"(GET|HEAD) /(health|ping|metrics|favicon\\.ico|robots\\.txt)"
+    drop_counter_reason = "healthcheck_endpoint"
+  }
+
+  // Guard against log-spam: drop lines over 8 KB
+  stage.drop {
+    longer_than         = "8KB"
+    drop_counter_reason = "line_too_long"
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+// ----------------------------------------------------------------------------
+// Loki write endpoint
+// ----------------------------------------------------------------------------
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+  external_labels = {}
+}

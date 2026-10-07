@@ -1,0 +1,55 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.7.7
+    container_name: crowdsec
+    restart: unless-stopped
+    environment:
+      # Installs parsers + scenarios for Traefik and AppSec WAF on first start
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules"
+      CUSTOM_HOSTNAME: crowdsec
+      # Auto-provisions the bouncer key — must match CROWDSEC_BOUNCER_KEY in the traefik stack
+      BOUNCER_KEY_TRAEFIK: ${CROWDSEC_BOUNCER_KEY}
+    volumes:
+      # acquis.yaml tells CrowdSec where to read logs from (file-based + AppSec listener)
+      - /docker/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      # Shared with Traefik: reads the access log Traefik writes to /docker/traefik/logs/
+      - /docker/traefik/logs:/var/log/traefik:ro
+      # Persist config (parsers, collections) so they survive restarts without re-downloading
+      - /docker/crowdsec/config:/etc/crowdsec/
+      # Persist ban database and GeoIP data
+      - /docker/crowdsec/data:/var/lib/crowdsec/data/
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - default
+
+# Deployment steps:
+#
+# 1. Choose a strong CROWDSEC_BOUNCER_KEY (any random string, e.g. openssl rand -hex 32)
+#    Set it in BOTH this stack AND the traefik stack env vars in Portainer.
+#
+# 2. Deploy this stack (CrowdSec will auto-register the bouncer on startup).
+#
+# 3. Deploy / redeploy the traefik stack with the matching CROWDSEC_BOUNCER_KEY.
+#    Traefik downloads the plugin on first start — this requires internet access.
+#
+# 4. Verify the bouncer connected:
+#      docker exec crowdsec cscli bouncers list
+#    You should see TRAEFIK with a recent lastPull timestamp.
+#
+# 5. Once confirmed, enable global filtering in traefik/docker-compose.yml by
+#    uncommenting:
+#      - "--entrypoints.websecure.http.middlewares=crowdsec@docker"
+#    Then redeploy the traefik stack.
+#
+# Useful commands:
+#   docker exec crowdsec cscli decisions list          # active bans
+#   docker exec crowdsec cscli alerts list             # triggered alerts
+#   docker exec crowdsec cscli metrics                 # parser/scenario hit counts
+#   docker exec crowdsec cscli hub update              # update hub index
+#   docker exec crowdsec cscli collections upgrade crowdsecurity/traefik
+
+networks:
+  default:
+    name: network_default
+    external: true

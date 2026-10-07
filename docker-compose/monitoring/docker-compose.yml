@@ -2,39 +2,47 @@ version: "3"
 services:
   loki:
     container_name: loki
-    image: grafana/loki:main
+    image: grafana/loki:3.6.10
     volumes:
       - /docker/grafana-monitoring/loki:/etc/loki
     ports:
       - "3100:3100"
     restart: unless-stopped
     command: -config.file=/etc/loki/loki-config.yml
-    
-  promtail:
-    container_name: promtail
-    image: grafana/promtail:main
-    volumes:
-      - /var/log:/var/log:ro
-      - /docker/grafana-monitoring/promtail:/etc/promtail
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    ports:
-      - "1514:1514" # this is only needed if you are going to send syslogs
+
+  alloy:
+    container_name: alloy
+    image: grafana/alloy:v1.15.0
     restart: unless-stopped
-    command: -config.file=/etc/promtail/promtail-config.yml
-    
+    volumes:
+      - /docker/grafana-monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /docker/grafana-monitoring/alloy/data:/var/lib/alloy/data
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
+
   grafana:
     user: "0"
-    ports:
-      - 3000:3000
     container_name: grafana
     image: grafana/grafana-oss:12.0.2
     environment:
-      - GF_SERVER_ROOT_URL=http://192.168.1.224:3000
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
     volumes:
     - /docker/grafana-monitoring/grafana:/var/lib/grafana
     restart: unless-stopped
-      
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      # To enable Authentik forward auth: - "traefik.http.routers.grafana.middlewares=authentik-forwardauth@docker"
+
   influxdb:
     container_name: influxdb
     image: influxdb:latest
@@ -44,15 +52,15 @@ services:
       - 8089:8089/udp
     volumes:
       - /docker/grafana-monitoring/influxdb:/var/lib/influxdb2
-      
+
   telegraf:
     container_name: telegraf
     restart: unless-stopped
     volumes:
         - '/docker/grafana-monitoring/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro'
-        - '/:/hostfs:ro' # to monitor docker-vm
-        - '/var/run/docker.sock:/var/run/docker.sock' # to monitor docker containers
-        - '/docker/grafana-monitoring/telegraf/mibs:/usr/share/snmp/mibs' # mibs files [e.g., sophos]
+        - '/:/hostfs:ro'
+        - '/var/run/docker.sock:/var/run/docker.sock'
+        - '/docker/grafana-monitoring/telegraf/mibs:/usr/share/snmp/mibs'
     environment:
         - HOST_ETC=/hostfs/etc
         - HOST_PROC=/hostfs/proc
@@ -62,9 +70,9 @@ services:
         - HOST_MOUNT_PREFIX=/hostfs
     image: telegraf:latest
     user: telegraf:999
-    
+
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v3.11.1
     container_name: prometheus
     restart: unless-stopped
     ports:
@@ -76,10 +84,14 @@ services:
     image: louislam/uptime-kuma:2
     container_name: uptime-kuma
     restart: unless-stopped
-    ports:
-      - 3001:3001
     volumes:
       - /docker/uptime-kuma:/app/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.rule=Host(`status.${DOMAIN}`)"
+      - "traefik.http.routers.uptime.entrypoints=websecure"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"
+      # To enable Authentik forward auth: - "traefik.http.routers.uptime.middlewares=authentik-forwardauth@docker"
 
 networks:
   default:

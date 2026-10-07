@@ -1,0 +1,253 @@
+- Productivity:
+    - Vikunja:
+        icon: vikunja
+        href: https://tasks.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Task & project management
+    - Tandoor Recipes:
+        icon: tandoor-recipes
+        href: https://recipes.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Recipe manager
+    - Obsidian LiveSync:
+        icon: obsidian
+        href: https://notesdb.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Note sync (CouchDB)
+
+- Photos & Docs:
+    - Immich:
+        icon: immich
+        href: https://fotos.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Photo & video management
+        widget:
+          type: immich
+          url: https://fotos.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_IMMICH_KEY}}
+    # Uncomment when Paperless-ngx is deployed:
+    # - Paperless-ngx:
+    #     icon: paperless-ngx
+    #     href: https://paperless.{{HOMEPAGE_VAR_DOMAIN}}
+    #     description: Document management
+    #     widget:
+    #       type: paperlessngx
+    #       url: https://paperless.{{HOMEPAGE_VAR_DOMAIN}}
+    #       key: {{HOMEPAGE_VAR_PAPERLESS_KEY}}
+
+- Media:
+    - Radarr:
+        icon: radarr
+        href: https://rad.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Movie collection manager
+        widget:
+          type: radarr
+          url: https://rad.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_RADARR_KEY}}
+          fields: ["wanted", "queued", "movies"]
+    - Sonarr:
+        icon: sonarr
+        href: https://son.{{HOMEPAGE_VAR_DOMAIN}}
+        description: TV series manager
+        widget:
+          type: sonarr
+          url: https://son.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_SONARR_KEY}}
+          fields: ["wanted", "queued", "series"]
+    - Prowlarr:
+        icon: prowlarr
+        href: https://prowl.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Indexer manager
+        widget:
+          type: prowlarr
+          url: https://prowl.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_PROWLARR_KEY}}
+    - Jellyseerr:
+        icon: jellyseerr
+        href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Media request portal
+        widget:
+          type: jellyseerr
+          url: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_JELLYSEERR_KEY}}
+          fields: ["pending", "approved", "available"]
+    - Bazarr:
+        icon: bazarr
+        href: https://baz.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Subtitle manager
+    - Readarr:
+        icon: readarr
+        href: https://readarr.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Ebook manager
+    - Jellyfin:
+        icon: jellyfin
+        href: http://192.168.1.174:8096
+        description: Media server (LXC 201)
+        widget:
+          type: jellyfin
+          url: http://192.168.1.174:8096
+          key: {{HOMEPAGE_VAR_JELLYFIN_KEY}}
+          fields: ["movies", "series", "songs"]
+    - Navidrome:
+        icon: navidrome
+        href: https://music.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Music streaming
+        widget:
+          type: navidrome
+          url: https://music.{{HOMEPAGE_VAR_DOMAIN}}
+          user: admin
+          token: {{HOMEPAGE_VAR_NAVIDROME_TOKEN}}
+          salt: {{HOMEPAGE_VAR_NAVIDROME_SALT}}
+    - Deemix:
+        icon: deezer
+        href: https://deemix.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Music downloader
+    - Blackhole:
+        icon: qbittorrent
+        href: http://192.168.1.224:8282
+        description: qBittorrent (via Blackhole)
+
+- Passwords:
+    - Vaultwarden:
+        icon: vaultwarden
+        href: https://sec.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Password manager
+
+- Smart Home:
+    - Home Assistant:
+        icon: home-assistant
+        href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Home automation
+        widget:
+          type: homeassistant
+          url: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_HA_KEY}}
+    - Frigate:
+        icon: frigate
+        href: https://frigate.{{HOMEPAGE_VAR_DOMAIN}}
+        description: NVR + object detection (Reolink)
+        widget:
+          type: frigate
+          url: https://frigate.{{HOMEPAGE_VAR_DOMAIN}}  # pinned to Traefik via extra_hosts in the homepage compose
+          username: {{HOMEPAGE_VAR_FRIGATE_USER}}
+          password: {{HOMEPAGE_VAR_FRIGATE_PASSWORD}}
+          enableRecentEvents: true
+
+- Hypervisor:
+    - Proxmox VE:
+        icon: proxmox
+        href: https://192.168.1.148:8006
+        description: Hypervisor (pvehost)
+        widget:
+          type: proxmox
+          url: https://192.168.1.148:8006
+          username: {{HOMEPAGE_VAR_PROXMOX_USER}}
+          password: {{HOMEPAGE_VAR_PROXMOX_SECRET}}
+          node: pvehost
+    - Vault:
+        icon: mdi-lock
+        href: https://192.168.1.172:8200
+        description: HashiCorp Vault (LXC 100)
+    - Docker Prod:
+        icon: mdi-docker
+        href: https://192.168.1.224:9001
+        description: Production LXC (101)
+    - Docker Dev:
+        icon: mdi-docker
+        description: Dev LXC (102, stopped)
+    - Proxy:
+        icon: mdi-swap-vertical
+        description: Reverse proxy LXC (103)
+    - Docker Tower:
+        icon: mdi-docker
+        href: https://192.168.1.248:9443
+        description: Tower LXC (104)
+    - Jellyfin LXC:
+        icon: mdi-play-circle-outline
+        href: http://192.168.1.174:8096
+        description: Media server LXC (201)
+
+- Docker:
+    - Portainer:
+        icon: portainer
+        href: https://192.168.1.248:9443
+        description: Docker management
+        widget:
+          type: portainer
+          url: https://192.168.1.248:9443
+          env: 2
+          key: {{HOMEPAGE_VAR_PORTAINER_KEY}}
+
+- Network:
+    - Traefik:
+        icon: traefik
+        href: https://traefik.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Reverse proxy & load balancer
+        widget:
+          type: traefik
+          url: https://traefik.{{HOMEPAGE_VAR_DOMAIN}}
+    - Cloudflare Tunnel:
+        icon: cloudflare
+        href: https://one.dash.cloudflare.com/
+        description: External access tunnel
+        widget:
+          type: cloudflared
+          accountid: {{HOMEPAGE_VAR_CF_ACCOUNT}}
+          tunnelid: {{HOMEPAGE_VAR_CF_TUNNEL}}
+          key: {{HOMEPAGE_VAR_CF_TOKEN}}
+    - Technitium Prod:
+        icon: technitium
+        href: http://192.168.1.224:5380
+        description: DNS (docker-prod)
+    - Technitium Tower:
+        icon: technitium
+        href: http://192.168.1.248:5380
+        description: DNS (docker-tower)
+
+- Security:
+    - Authentik:
+        icon: authentik
+        href: https://au.{{HOMEPAGE_VAR_DOMAIN}}
+        description: SSO & identity provider
+        widget:
+          type: authentik
+          url: https://au.{{HOMEPAGE_VAR_DOMAIN}}
+          key: {{HOMEPAGE_VAR_AUTHENTIK_KEY}}
+    - CrowdSec:
+        icon: crowdsec
+        description: Intrusion detection
+        # Widget requires exposing CrowdSec LAPI port (8080) on docker-prod
+
+- Dashboards:
+    - Grafana:
+        icon: grafana
+        href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Dashboards & visualization
+        widget:
+          type: grafana
+          url: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
+          username: admin
+          password: {{HOMEPAGE_VAR_GRAFANA_PASSWORD}}
+    - Prometheus:
+        icon: prometheus
+        href: http://192.168.1.224:9090
+        description: Metrics collection & alerting
+        widget:
+          type: prometheus
+          url: http://192.168.1.224:9090
+
+- Logging:
+    - Loki:
+        icon: loki
+        href: http://192.168.1.224:3100
+        description: Log aggregation (14d retention)
+    - Alloy:
+        icon: grafana
+        href: http://192.168.1.224:12345
+        description: Log collector (replaces Promtail)
+
+- Uptime:
+    - Uptime Kuma:
+        icon: uptime-kuma
+        href: https://status.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Service monitoring (21 checks)
+        widget:
+          type: uptimekuma
+          url: https://status.{{HOMEPAGE_VAR_DOMAIN}}
+          slug: default

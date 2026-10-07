@@ -6,8 +6,6 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-    ports:
-      - 9696:9696
     hostname: prowlarr
     image: ghcr.io/hotio/prowlarr:release
     restart: unless-stopped
@@ -15,14 +13,17 @@ services:
       - /data:/data
       - /docker/prowlarr/Definitions/Custom:/Custom
       - /docker/prowlarr:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowl.${DOMAIN}`)"
+      - "traefik.http.routers.prowlarr.entrypoints=websecure"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 
   radarr:
     container_name: radarr
     environment:
       - PUID=1000
       - PGID=1000
-    ports:
-      - 7878:7878
     hostname: radarr
     image: ghcr.io/hotio/radarr:release
     restart: unless-stopped
@@ -31,6 +32,11 @@ services:
       - /docker/radarr:/config
       - /docker/scripts:/scripts
       - /usr/bin/rclone:/usr/bin/rclone
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`rad.${DOMAIN}`)"
+      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
     # depends_on:
     #   - rclone
 
@@ -39,8 +45,6 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-    ports:
-      - 8989:8989
     hostname: sonarr
     image: ghcr.io/hotio/sonarr:release
     restart: unless-stopped
@@ -49,6 +53,11 @@ services:
       - /docker/scripts:/scripts
       - /docker/sonarr:/config
       - /usr/bin/rclone:/usr/bin/rclone
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`son.${DOMAIN}`)"
+      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
     # depends_on:
     #   - rclone
 
@@ -99,20 +108,27 @@ services:
     volumes:
       - /docker/bazarr:/config
       - /data:/data
-    ports:
-      - 6767:6767
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bazarr.rule=Host(`baz.${DOMAIN}`)"
+      - "traefik.http.routers.bazarr.entrypoints=websecure"
+      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
 
   jellyseerr:
     container_name: jellyseerr
-    image: fallenbagel/jellyseerr:latest
+    # Seerr (Jellyseerr successor) — needed for Jellyfin 12 auth. Runs as uid 1000.
+    image: ghcr.io/seerr-team/seerr:latest
+    init: true
     environment:
-      - PUID=1000
-      - PGID=1000
+      - TZ=Europe/London
     volumes:
       - /docker/jellyseerr:/app/config
-    ports:
-      - 5055:5055
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyseerr.rule=Host(`request.${DOMAIN}`)"
+      - "traefik.http.routers.jellyseerr.entrypoints=websecure"
+      - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
    
   # blackhole:
   #   image: ghcr.io/westsurname/scripts/blackhole:latest
@@ -175,6 +191,25 @@ services:
       - PORT=8181 # Proxy Port. This is optional. You can set this in the config file
     restart: unless-stopped
 
+  sabnzbd:
+    container_name: sabnzbd
+    image: ghcr.io/hotio/sabnzbd
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/London
+      - WEBUI_PORTS=8080/tcp
+    volumes:
+      - /docker/sabnzbd:/config
+      - /data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.${DOMAIN}`)"
+      - "traefik.http.routers.sabnzbd.entrypoints=websecure"
+      - "traefik.http.services.sabnzbd.loadbalancer.server.port=8080"
+
   readarr:
     image: lscr.io/linuxserver/readarr:develop
     container_name: readarr
@@ -184,9 +219,12 @@ services:
     volumes:
       - /docker/readarr:/config
       - /data:/data
-    ports:
-      - 8787:8787
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.readarr.rule=Host(`readarr.${DOMAIN}`)"
+      - "traefik.http.routers.readarr.entrypoints=websecure"
+      - "traefik.http.services.readarr.loadbalancer.server.port=8787"
 
 networks:
   default:

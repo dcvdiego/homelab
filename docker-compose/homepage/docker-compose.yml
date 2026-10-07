@@ -1,0 +1,59 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v1.12.3
+    container_name: homepage
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: home.${DOMAIN},192.168.1.248:3000,homepage.homelab.lan
+      HOMEPAGE_VAR_DOMAIN: ${DOMAIN}            # services.yaml links use {{HOMEPAGE_VAR_DOMAIN}}
+      HOMEPAGE_VAR_PROXMOX_USER: ${HOMEPAGE_VAR_PROXMOX_USER}
+      HOMEPAGE_VAR_PROXMOX_SECRET: ${HOMEPAGE_VAR_PROXMOX_SECRET}
+      HOMEPAGE_VAR_CF_ACCOUNT: ${HOMEPAGE_VAR_CF_ACCOUNT}
+      HOMEPAGE_VAR_CF_TUNNEL: ${HOMEPAGE_VAR_CF_TUNNEL}
+      HOMEPAGE_VAR_CF_TOKEN: ${HOMEPAGE_VAR_CF_TOKEN}
+      HOMEPAGE_VAR_PORTAINER_KEY: ${HOMEPAGE_VAR_PORTAINER_KEY}
+      HOMEPAGE_VAR_IMMICH_KEY: ${HOMEPAGE_VAR_IMMICH_KEY}
+      HOMEPAGE_VAR_RADARR_KEY: ${HOMEPAGE_VAR_RADARR_KEY}
+      HOMEPAGE_VAR_SONARR_KEY: ${HOMEPAGE_VAR_SONARR_KEY}
+      HOMEPAGE_VAR_PROWLARR_KEY: ${HOMEPAGE_VAR_PROWLARR_KEY}
+      HOMEPAGE_VAR_JELLYSEERR_KEY: ${HOMEPAGE_VAR_JELLYSEERR_KEY}
+      HOMEPAGE_VAR_JELLYFIN_KEY: ${HOMEPAGE_VAR_JELLYFIN_KEY}
+      HOMEPAGE_VAR_NAVIDROME_TOKEN: ${HOMEPAGE_VAR_NAVIDROME_TOKEN}
+      HOMEPAGE_VAR_NAVIDROME_SALT: ${HOMEPAGE_VAR_NAVIDROME_SALT}
+      HOMEPAGE_VAR_AUTHENTIK_KEY: ${HOMEPAGE_VAR_AUTHENTIK_KEY}
+      HOMEPAGE_VAR_GRAFANA_PASSWORD: ${HOMEPAGE_VAR_GRAFANA_PASSWORD}
+      HOMEPAGE_VAR_HA_KEY: ${HOMEPAGE_VAR_HA_KEY}
+      HOMEPAGE_VAR_FRIGATE_USER: ${HOMEPAGE_VAR_FRIGATE_USER}
+      HOMEPAGE_VAR_FRIGATE_PASSWORD: ${HOMEPAGE_VAR_FRIGATE_PASSWORD}
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "grafana.${DOMAIN}:192.168.1.224"
+      - "status.${DOMAIN}:192.168.1.224"
+      - "fotos.${DOMAIN}:192.168.1.224"
+      - "au.${DOMAIN}:192.168.1.224"
+      - "sec.${DOMAIN}:192.168.1.224"
+      - "prowl.${DOMAIN}:192.168.1.224"
+      - "rad.${DOMAIN}:192.168.1.224"
+      - "son.${DOMAIN}:192.168.1.224"
+      - "baz.${DOMAIN}:192.168.1.224"
+      - "request.${DOMAIN}:192.168.1.224"
+      - "readarr.${DOMAIN}:192.168.1.224"
+      - "recipes.${DOMAIN}:192.168.1.224"
+      - "tasks.${DOMAIN}:192.168.1.224"
+      - "music.${DOMAIN}:192.168.1.224"
+      - "deemix.${DOMAIN}:192.168.1.224"
+      - "traefik.${DOMAIN}:192.168.1.224"
+      - "cloud.${DOMAIN}:192.168.1.224"
+      - "office.${DOMAIN}:192.168.1.224"
+      - "ha.${DOMAIN}:192.168.1.224"
+      - "chat.${DOMAIN}:192.168.1.224"
+      - "frigate.${DOMAIN}:192.168.1.224"
+    volumes:
+      - /docker/homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+networks:
+  default:
+    name: network_default
+    external: true
