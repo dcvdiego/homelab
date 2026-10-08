@@ -36,18 +36,19 @@ push() {
     || log "warn: Uptime Kuma push failed"
 }
 
-# finish <name> <tmpfile> <final> <check-regex>
-# The dump must be valid gzip, non-empty, and its last lines must match the tool's "completed" marker.
+# finish <name> <tmpfile> <final> <dump-exit-code> <check-regex> <last-n-lines>
+# The dump command must have exited 0, the file must be valid gzip and non-empty, and its last
+# <n> lines must match the tool's "completed" marker (written only when the tool finishes).
 finish() {
-  local name=$1 tmp=$2 final=$3 marker=$4
-  if gzip -t "$tmp" 2>/dev/null && [ "$(gzip -dc "$tmp" 2>/dev/null | head -c1 | wc -c)" -eq 1 ] \
-     && gzip -dc "$tmp" | tail -n 5 | grep -qE "$marker"; then
+  local name=$1 tmp=$2 final=$3 rc=$4 marker=$5 lines=$6
+  if [ "$rc" -eq 0 ] && gzip -t "$tmp" 2>/dev/null && [ "$(gzip -dc "$tmp" 2>/dev/null | head -c1 | wc -c)" -eq 1 ] \
+     && gzip -dc "$tmp" | tail -n "$lines" | grep -qE "$marker"; then
     mv "$tmp" "$final"
     log "ok   $name $(du -h "$final" | cut -f1)"
   else
     rm -f "$tmp"
     FAILED+=("$name")
-    log "FAIL $name (incomplete or empty dump)"
+    log "FAIL $name (exit $rc, or incomplete/empty dump)"
   fi
 }
 
@@ -55,7 +56,7 @@ finish() {
 for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database strapiDB; do
   f="$OUT/$c-$STAMP.sql.gz"
   docker exec "$c" sh -c 'pg_dumpall -U "$POSTGRES_USER"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
-  finish "$c" "$f.tmp" "$f" 'PostgreSQL database cluster dump complete'
+  finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'PostgreSQL database cluster dump complete' 5
 done
 
 # MariaDB (notes stack): password passed via MYSQL_PWD inside the container, not on argv.
@@ -63,22 +64,26 @@ c=notes-db-1
 f="$OUT/$c-$STAMP.sql.gz"
 docker exec "$c" sh -c 'D=$(command -v mariadb-dump || command -v mysqldump); MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$D" -uroot --all-databases --single-transaction --routines --events' \
   2>>"$OUT/.errors.log" | gzip > "$f.tmp"
-finish "$c" "$f.tmp" "$f" 'Dump completed'
+finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'Dump completed' 5
 
 # CouchDB (Obsidian LiveSync): every database as JSON (_all_docs with docs and attachments).
+# The object's closing brace is written alone on the last line, only after every database was
+# fetched (any curl failure exits non-zero first). CouchDB rows never form a bare "}" line, so a
+# truncated export can't pass the check.
 c=obsidian-livesync
 f="$OUT/$c-$STAMP.json.gz"
 docker exec "$c" sh -c '
   A="$COUCHDB_USER:$COUCHDB_PASSWORD"; U=http://127.0.0.1:5984
-  printf "{"; first=1
-  for db in $(curl -fsS -u "$A" "$U/_all_dbs" | tr -d "[]\"" | tr "," " "); do
+  dbs=$(curl -fsS -u "$A" "$U/_all_dbs") || exit 1
+  printf "{\n"; first=1
+  for db in $(printf "%s" "$dbs" | tr -d "[]\"" | tr "," " "); do
     case "$db" in _*) continue;; esac
-    [ $first -eq 1 ] || printf ","; first=0
+    [ $first -eq 1 ] || printf ",\n"; first=0
     printf "\"%s\":" "$db"
     curl -fsS -u "$A" "$U/$db/_all_docs?include_docs=true&attachments=true" || exit 1
   done
-  printf "}\n"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
-finish "$c" "$f.tmp" "$f" '\}$'
+  printf "\n}\n"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
+finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" '^\}$' 1
 
 # Retention
 find "$OUT" -maxdepth 1 -type f \( -name '*.sql.gz' -o -name '*.json.gz' \) -mtime +"$KEEP_DAYS" -delete
