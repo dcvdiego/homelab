@@ -58,10 +58,15 @@ jobs:
           OPENAI__API_BASE: https://opencode.ai/zen/go/v1
           CONFIG__MODEL: openai/kimi-k2.7-code
           CONFIG__FALLBACK_MODELS: '["openai/glm-5.2"]'
+          # Go's Kimi endpoint rejects PR-Agent's default temperature (0.2).
+          # Omit it so the provider uses its supported default.
+          CONFIG__NO_TEMPERATURE_MODELS: '["openai/kimi-k2.7-code"]'
           # Conservative prompt budget, not a claim about model context capacity.
           CONFIG__CUSTOM_MODEL_MAX_TOKENS: "32000"
           CONFIG__MAX_MODEL_TOKENS: "32000"
-          CONFIG__AI_TIMEOUT: "300"
+          CONFIG__AI_TIMEOUT: "120"
+          # Disable client retries as well as handler-level timeout retries.
+          CONFIG__NUM_RETRIES: "0"
           CONFIG__RETRY_SAME_MODEL_ON_TIMEOUT: "false"
           CONFIG__RESTRICTED_MODE: "true"
           CONFIG__ENABLE_AUTO_APPROVAL: "false"
