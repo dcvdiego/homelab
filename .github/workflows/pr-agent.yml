@@ -78,6 +78,11 @@ jobs:
           CONFIG__USE_GLOBAL_SETTINGS_FILE: "false"
           CONFIG__REPO_CONTEXT_FROM_DEFAULT_BRANCH: "true"
           LITELLM__TURN_OFF_MESSAGE_LOGGING: "true"
+          # Test the streaming path that succeeded in the direct Go diagnostic.
+          # v0.47.0 requires an explicit provider AND matching base URL to force it.
+          LITELLM__CUSTOM_LLM_PROVIDER: openai
+          LITELLM__FORCE_STREAMING_CUSTOM_LLM_PROVIDER: openai
+          LITELLM__FORCE_STREAMING_API_BASE_SUBSTRINGS: '["https://opencode.ai/zen/go/v1"]'
           # Stable across commands, pushes, retries, and both Go models for a PR.
           LITELLM__EXTRA_HEADERS: >-
             {"User-Agent":"homelab-pr-agent/0.47.0",
