@@ -28,6 +28,11 @@ MONITORS = [
     {"name": "Komodo",           "url": "http://192.168.1.248:9120",             "parent_name": "Infrastructure"},
     {"name": "Proxmox",          "url": "https://192.168.1.148:8006",            "parent_name": "Infrastructure"},
     {"name": "Authentik",        "url": "http://192.168.1.224:9000/-/health/ready/", "parent_name": "Infrastructure"},
+    # Nightly database dumps on docker-prod (scripts/db-dumps.sh, cron 01:30) push up/down here.
+    # 25h interval: one missed nightly run alerts.
+    {"name": "Backups: database dumps (push)", "type": "push", "push_env": "KUMA_PUSH_DB_DUMPS",
+     "push_token": os.environ.get("KUMA_PUSH_DB_DUMPS", ""), "interval": 90000, "maxretries": 0,
+     "parent_name": "Infrastructure"},
     # --- DNS (see docs/networking.md#dns-failure-modes) ---
     # Technitium answering on the LAN, per instance, plus the local zone it serves.
     {"name": "DNS: Technitium docker-prod",  "type": "dns", "hostname": "example.com",         "dns_server": "192.168.1.224", "parent_name": "DNS"},
@@ -159,11 +164,12 @@ def main():
                             "dns_resolve_type": "A", "port": 53})
         elif kind == "push":
             if not m["push_token"]:
-                print(f"  Skip: {m['name']} (KUMA_PUSH_TAILNET_DNS not set in .env)")
+                print(f"  Skip: {m['name']} ({m.get('push_env', 'KUMA_PUSH_TAILNET_DNS')} not set in .env)")
                 skipped += 1
                 continue
-            # The pusher runs every 5 min; allow one missed beat before alerting.
-            payload.update({"pushToken": m["push_token"], "interval": 360, "maxretries": 1})
+            # Default pusher runs every 5 min; allow one missed beat before alerting.
+            payload.update({"pushToken": m["push_token"], "interval": m.get("interval", 360),
+                            "maxretries": m.get("maxretries", 1)})
         if m["parent_name"] in group_ids:
             payload["parent"] = group_ids[m["parent_name"]]
 
