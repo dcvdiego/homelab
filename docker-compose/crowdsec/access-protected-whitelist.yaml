@@ -1,0 +1,27 @@
+# Routers whose hostnames sit behind the Cloudflare Access app "private-selfhost" (email allowlist
+# + geo) or "ntfy" (email or service token). The tunnel is the only way in (no port forward on the
+# BT Hub, checked 2026-10-23), so every request on these routers comes from someone who passed
+# Access: behaviour scenarios here can only ban our own users (radarr/prowlarr/sonarr 403 bursts).
+#
+# NOT listed, because Access bypasses them for everyone and CrowdSec is their real protection:
+# immich (fotos), vaultwarden (sec), authentik (au), obsidian (notesdb), vikunja (tasks),
+# navidrome (music), homeassistant (ha), zulip (chat).
+#
+# LAN clients (split DNS) were never covered: crowdsecurity/whitelists drops private ranges.
+# Tailnet clients (100.64.0.0/10) can reach Traefik without Access, so they stay covered.
+#
+# Moving a hostname to a bypass policy in Cloudflare? Remove its router here first.
+name: homelab/access-protected-routers
+description: "Ignore traffic on routers that only Cloudflare Access-authenticated users can reach"
+whitelist:
+  reason: "Cloudflare Access-protected router"
+  expression:
+    - >-
+      evt.Meta.traefik_router_name in [
+        'bazarr@docker', 'collabora@docker', 'deemix@docker', 'frigate@docker',
+        'grafana@docker', 'jellyseerr@docker', 'nextcloud@docker', 'ntfy@docker',
+        'open-webui@docker', 'prowlarr@docker', 'radarr@docker', 'readarr@docker',
+        'recipes@docker', 'sabnzbd@docker', 'sonarr@docker', 'traefik-dashboard@docker',
+        'uptime@docker', 'zigbee2mqtt@docker',
+        'homepage@file', 'komodo@file', 'termix@file'
+      ] && !IpInRange(evt.Meta.source_ip, '100.64.0.0/10')
