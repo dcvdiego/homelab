@@ -3,6 +3,10 @@ services:
     image: crowdsecurity/crowdsec:v1.7.7
     container_name: crowdsec
     restart: unless-stopped
+    # Loads CROWDSEC_NTFY_TOKEN (used by ntfy-notification.yaml) from a root-only file on docker-prod,
+    # then runs the image's own entrypoint. No file: CrowdSec runs as before, only the ntfy push fails.
+    # The file is bind-mounted, not env_file: compose runs inside Komodo Periphery, which can't see /docker.
+    entrypoint: ["/bin/bash", "-c", "if [ -r /run/secrets/ntfy.env ]; then set -a; . /run/secrets/ntfy.env; set +a; fi; exec /bin/bash /docker_start.sh"]
     environment:
       # Installs parsers + scenarios for Traefik and AppSec WAF on first start
       COLLECTIONS: "crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules"
@@ -16,6 +20,12 @@ services:
       - ./immich-whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/immich-whitelist.yaml:ro
       # Routers only Cloudflare Access-authenticated users can reach (see the file)
       - ./access-protected-whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/access-protected-whitelist.yaml:ro
+      # Repo-managed: stock v1.7.7 profiles + ntfy notification on every ban
+      - ./profiles.yaml:/etc/crowdsec/profiles.yaml:ro
+      - ./ntfy-notification.yaml:/etc/crowdsec/notifications/http.yaml:ro
+      # Holds ntfy.env (CROWDSEC_NTFY_TOKEN=tk_...), root 600. A directory, so a deploy before the
+      # file exists creates an empty dir here rather than a dir named ntfy.env
+      - /docker/crowdsec/secrets:/run/secrets:ro
       # Shared with Traefik: reads the access log Traefik writes to /docker/traefik/logs/
       - /docker/traefik/logs:/var/log/traefik:ro
       # Persist config (parsers, collections) so they survive restarts without re-downloading
