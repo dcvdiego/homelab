@@ -7,6 +7,9 @@
 # immich (fotos), vaultwarden (sec), authentik (au), obsidian (notesdb), vikunja (tasks),
 # navidrome (music), homeassistant (ha), zulip (chat).
 #
+# LAN clients (split DNS) were never covered: crowdsecurity/whitelists drops private ranges.
+# Tailnet clients (100.64.0.0/10) can reach Traefik without Access, so they stay covered.
+#
 # Moving a hostname to a bypass policy in Cloudflare? Remove its router here first.
 name: homelab/access-protected-routers
 description: "Ignore traffic on routers that only Cloudflare Access-authenticated users can reach"
@@ -21,4 +24,4 @@ whitelist:
         'recipes@docker', 'sabnzbd@docker', 'sonarr@docker', 'traefik-dashboard@docker',
         'uptime@docker', 'zigbee2mqtt@docker',
         'homepage@file', 'komodo@file', 'termix@file'
-      ]
+      ] && !IpInRange(evt.Meta.source_ip, '100.64.0.0/10')
