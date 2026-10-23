@@ -1,0 +1,9 @@
+# Immich's timeline fetches thumbnails in bursts; assets with no thumbnail answer 404, and a burst
+# of those trips crowdsecurity/http-probing, which banned the owner's home IP (2026-10-22).
+# Drop only 404s on Immich's thumbnail endpoint, so a real scan of other paths still counts.
+name: homelab/immich-thumbnail-404
+description: "Ignore 404s on Immich asset thumbnails"
+whitelist:
+  reason: "Immich timeline requests missing thumbnails"
+  expression:
+    - evt.Meta.http_status == '404' && evt.Meta.http_path matches '^/api/assets/[0-9a-f-]{36}/thumbnail([?]|$)'

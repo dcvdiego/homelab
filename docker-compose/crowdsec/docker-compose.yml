@@ -12,6 +12,8 @@ services:
     volumes:
       # acquis.yaml tells CrowdSec where to read logs from (file-based + AppSec listener)
       - /docker/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      # Repo-managed whitelist: Immich thumbnail 404s aren't probing (see the file)
+      - ./immich-whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/immich-whitelist.yaml:ro
       # Shared with Traefik: reads the access log Traefik writes to /docker/traefik/logs/
       - /docker/traefik/logs:/var/log/traefik:ro
       # Persist config (parsers, collections) so they survive restarts without re-downloading
