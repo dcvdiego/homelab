@@ -14,7 +14,7 @@ timeout: 10s
 format: |
   {{- range . }}{{ $src := .Source }}{{ range .Decisions -}}
   {{ .Value }}{{ with $src.AsName }} ({{ $src.Cn }}, {{ . }}){{ end }} banned {{ .Duration }}: {{ .Scenario }}
-  Unban: docker exec crowdsec cscli decisions delete --ip {{ .Value }}
+  Unban: docker exec crowdsec cscli decisions delete --{{ .Scope | lower }} {{ .Value }}
   {{ end }}{{ end }}
 
 url: http://ntfy/homelab
