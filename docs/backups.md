@@ -63,3 +63,34 @@ ntfy runs on docker-prod (`docker-compose/ntfy`), topic `homelab`, `auth-default
   `KUMA_PUSH_URL` (root-only, not in git; token is `KUMA_PUSH_DB_DUMPS` in the owner's `.env`).
 - Restore, Postgres: `gzip -dc <file> | docker exec -i <container> psql -U <user> postgres`.
   MariaDB: `gzip -dc <file> | docker exec -i notes-db-1 sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb -uroot'`.
+
+## Pre-deploy backups
+
+Before every deploy of a critical stack, Komodo runs `scripts/pre-deploy-backup.sh <stack>` (stack
+config "Pre Deploy", set by `ops/requests/2026-10-24-komodo-pre-deploy-backups.sh`). The projects' own
+upgrade docs say to back up before updating (docs/image-versions.md); this makes it happen on every
+Renovate merge without anyone remembering. **If the backup fails, the deploy stops** (Periphery returns
+before `compose up`), so nothing is upgraded without a copy.
+
+| Stack | What | Stops for the copy |
+|---|---|---|
+| photos | `pg_dumpall` of `immich_postgres` | — |
+| security | `pg_dumpall` of `security-postgresql-1`; `/docker/authentik` (media, certs, templates); `/docker/vw-data` | vaultwarden |
+| haos | `/docker/ha` (without `backups/`, logs), zigbee2mqtt data, matter-server data, otbr data, mosquitto | homeassistant, zigbee2mqtt, matter-server, otbr |
+| matter-hub | `/docker/matter-hub` | matter-hub |
+| network-prod, network-tower | `/docker/technitium` (without logs, stats) | — |
+| frigate | `/docker/frigate/config` (config.yml, frigate.db; without model_cache) | frigate |
+| nextcloud, zulip, recipes | `pg_dumpall` of the stack's Postgres | — |
+| open-webui | `/docker/open-webui` (without cache) | open-webui |
+
+- Where: `/etc/komodo/pre-deploy-backups/<stack>/<timestamp>/` on the Docker host, newest 3 per stack.
+  The host rootfs is in the vzdump jobs, so they reach PBS too. Sizes today: a few MB to ~900 MB
+  (open-webui), Immich's dump is the largest database.
+- Stopped containers are started again when the copy is done (also on failure); compose then
+  recreates whatever changed. So a haos deploy restarts Home Assistant, Zigbee2MQTT, Matter and Thread
+  once even if only one of them changed: expect about a minute without home automation.
+- Files are read by a throwaway `alpine` container (pinned, Renovate-managed) with the host dir mounted
+  read-only; Postgres dumps run inside the DB container with its own credentials.
+- Adding a stack: a `case` entry in the script, its name in the ops request (as a new request), and a row here.
+- Restore: Postgres `gzip -dc <file>.sql.gz | docker exec -i <container> psql -U <user> postgres`;
+  files: stop the service, `tar xzf <file>.tar.gz -C <host dir>`, start it.
