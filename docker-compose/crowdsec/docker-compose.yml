@@ -1,6 +1,6 @@
 services:
   crowdsec:
-    image: crowdsecurity/crowdsec:v1.7.7
+    image: crowdsecurity/crowdsec:v1.7.7@sha256:6ca53ad26196ca59ddd4fa692a586b73d8fcde085046163b9ca2f04887dca563
     container_name: crowdsec
     restart: unless-stopped
     # Loads CROWDSEC_NTFY_TOKEN (used by ntfy-notification.yaml) from a root-only file on docker-prod,
