@@ -23,7 +23,8 @@ services:
       # Repo-managed: stock v1.7.7 profiles + ntfy notification on every ban
       - ./profiles.yaml:/etc/crowdsec/profiles.yaml:ro
       - ./ntfy-notification.yaml:/etc/crowdsec/notifications/http.yaml:ro
-      # Holds ntfy.env (CROWDSEC_NTFY_TOKEN=tk_...), root 600. A directory, so a deploy before the
+      # Holds ntfy.env (CROWDSEC_NTFY_TOKEN=tk_...), root 600, written by
+      # ops/requests/2026-10-24-crowdsec-ntfy.sh. A directory, so a deploy before the
       # file exists creates an empty dir here rather than a dir named ntfy.env
       - /docker/crowdsec/secrets:/run/secrets:ro
       # Shared with Traefik: reads the access log Traefik writes to /docker/traefik/logs/
