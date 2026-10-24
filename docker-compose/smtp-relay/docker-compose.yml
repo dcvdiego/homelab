@@ -1,6 +1,6 @@
 services:
   smtp-relay:
-    image: devture/exim-relay:latest
+    image: devture/exim-relay:4.98-r0-4@sha256:7ba30080c7a6ac4e93a99143ebd1aa229a16c47b97b2129002dc753c8a47f095
     container_name: smtp-relay
     restart: unless-stopped
     environment:

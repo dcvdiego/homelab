@@ -1,6 +1,6 @@
 services:
   zulip-database:
-    image: zulip/zulip-postgresql:14
+    image: zulip/zulip-postgresql:14@sha256:e71ba8616fa42cdc1b248f51263d9290c29681cb8c1992eb9b498af0bb656b29
     container_name: zulip-database
     restart: unless-stopped
     mem_limit: 512m
@@ -15,7 +15,7 @@ services:
       - /docker/zulip/postgresql:/var/lib/postgresql/data
 
   zulip-memcached:
-    image: memcached:alpine
+    image: memcached:alpine@sha256:6d687bc26426d092694743054fc674fc54d3c161fefa1ad20b54192f8580a8c1
     container_name: zulip-memcached
     restart: unless-stopped
     command: memcached -m 64
@@ -23,7 +23,7 @@ services:
     memswap_limit: 128m
 
   zulip-rabbitmq:
-    image: rabbitmq:4.2
+    image: rabbitmq:4.2@sha256:817c76db481515bb00ef727e022593a7435aa70e1d81c5341f4ad33c81b68636
     container_name: zulip-rabbitmq
     restart: unless-stopped
     mem_limit: 256m
@@ -43,7 +43,7 @@ services:
       - /docker/zulip/rabbitmq:/var/lib/rabbitmq
 
   zulip-redis:
-    image: redis:alpine
+    image: redis:alpine@sha256:0bf6577d7774e592b29d093e3ac9390eb91e13d72c21e506afce736de5e0eeb0
     container_name: zulip-redis
     restart: unless-stopped
     mem_limit: 128m
@@ -60,7 +60,7 @@ services:
       - /docker/zulip/redis:/data
 
   zulip:
-    image: ghcr.io/zulip/zulip-server:11.6-1
+    image: ghcr.io/zulip/zulip-server:11.6-1@sha256:c234d4794f57c98d30c68aeb70c1398c3100e84ac8fa38e16443b351a202602d
     container_name: zulip
     restart: unless-stopped
     secrets:

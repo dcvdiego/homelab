@@ -215,9 +215,12 @@ homelab/
 ├── site.example.env       # template for site.env (gitignored): DOMAIN and other identifying facts
 ├── .env                   # secrets on the owner's machine only — never commit
 ├── docker-compose/<stack>/ # one dir per Komodo stack: docker-compose.yml + example.env (+ config/)
-├── ops/                   # agent access: Warpgate setup and notifier, PR request runner, request guide
-├── .github/workflows/     # apply.yml: applies approved PRs on the self-hosted runner
-├── scripts/               # one-off and idempotent helpers (Kuma monitors, Technitium, restore test, Warpgate)
+├── renovate.json          # image update rules (docs/image-versions.md)
+├── ops/                   # agent access: Warpgate setup and notifier, PR request runner, request guide;
+│                          #   pending-workflows/: workflow changes for the owner to move into .github/
+├── .github/workflows/     # apply.yml: applies approved PRs on the self-hosted runner; pr-agent.yml; image-policy.yml
+├── scripts/               # helpers (Kuma monitors, Technitium, restore test, Warpgate) and the image policy
+│                          #   checks: check-images.py, upstream-compose.py, image-policy.json
 ├── docs/                  # design notes: agent access, networking/DNS, agents box, Komodo migration
 └── terraform/             # Proxmox IaC (WIP)
 ```
@@ -260,6 +263,43 @@ terraform plan -var-file="example.tfvars"
 ```
 Credentials go in a `terraform.tfvars` (gitignored).
 
+## Adding or updating a stack: image versions
+
+Every image runs the version **its own project's docs** say to run, pinned, and updated through
+Renovate PRs. The rules per image and why: [docs/image-versions.md](docs/image-versions.md). CI
+(`scripts/check-images.py`) fails a PR that breaks any of this, so do it before opening the PR:
+
+1. **Read the project's install and upgrade docs** (not a blog post, not memory). Note: the image the
+   docs name (registry and repo), its tag scheme, whether it ships its own compose file with
+   companion images (database, cache), and its upgrade rules: can versions be skipped, backups,
+   migrations, downgrades.
+2. **Companions from the project's compose**: if the project publishes a compose file per release
+   (like Immich, authentik, Zulip), copy its companion images verbatim from the compose **for the
+   version you pin** and add the stack under `upstream_compose` in `scripts/image-policy.json`.
+3. **Pin every image as `repo:<exact version>@sha256:<digest>`**: the version the docs recommend (or the
+   one you deploy), never `latest`/`stable`/`main` or a bare major (`:2`), and no `${VARS}` in `image:`
+   (Renovate can't read them). Companions keep the upstream tag (`postgres:16-alpine@sha256:…`). Get the
+   digest without pulling: `python3 -c "import sys; sys.path.insert(0,'scripts'); from imagelib import digest_of; print(digest_of('<repo>', '<tag>'))"`.
+4. **Add a row to `docs/image-versions.md`** for each new image: stacks, kind (review / batch /
+   sequential / companion / db), what the docs say, and the link you read.
+5. **Classify it in `renovate.json`**: add it to the weekly-batch or the review rule; a `versioning`
+   rule if its tags aren't plain semver (linuxserver `-lsN`, hotio `release-…`); `prBodyNotes` with
+   the upgrade rules and docs link if it's review; and under `sequential` in
+   `scripts/image-policy.json` if the docs forbid skipping releases.
+6. **Back up before deploys** if it holds data that matters: add the stack to
+   `scripts/pre-deploy-backup.sh` and to the ops request that sets Komodo's pre-deploy command
+   ([docs/backups.md](docs/backups.md#pre-deploy-backups)).
+7. Run `python3 scripts/check-images.py` and `python3 scripts/upstream-compose.py` locally; both must pass.
+
+**Updating an image by hand** (instead of waiting for Renovate): same rules. Read the release notes of
+every version in between, follow the docs' upgrade path (never skip a release line where the docs say
+so), keep companions matching the upstream compose for the new version, and update the row in
+`docs/image-versions.md` if the rule changed.
+
+**Reviewing a Renovate PR**: the PR body has the release notes and the image's rule; PR-Agent
+summarises breaking changes and manual steps. Merging deploys it (after the deployment approval); the
+pre-deploy backup runs first for critical stacks.
+
 ## Traefik & Auth Patterns
 
 All services use `${DOMAIN}` for subdomain routing via Traefik labels. `DOMAIN` is set per stack in Komodo's environment (never committed).
@@ -268,6 +308,7 @@ All services use `${DOMAIN}` for subdomain routing via Traefik labels. `DOMAIN` 
 
 Do ALL of these every time, in order:
 
+0. Follow **Adding or updating a stack: image versions** above (docs read, images pinned, rule recorded)
 1. Add Traefik labels to the service in `docker-compose.yml` (router + service port)
 2. Do NOT bind the HTTP port to the host (remove `ports:` for the web UI)
 3. Add `DOMAIN=` to `example.env`
@@ -391,3 +432,4 @@ The `$DOMAIN` zone in Technitium is a **Forwarder** zone (→ 1.1.1.1). Local A 
 - `ai-agent` sudo is read-only — use root SSH only when writes to the host are needed
 - Komodo admin keys can deploy and change any stack — be careful with `write`/`execute` calls
 - When adding a new service: create a `docker-compose/<service-name>/` directory with a `docker-compose.yml` and `example.env`
+- **Image versions come from the project's docs**: pinned `tag@digest`, rule recorded in `docs/image-versions.md` and `renovate.json` (see "Adding or updating a stack")

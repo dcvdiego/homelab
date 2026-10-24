@@ -4,7 +4,7 @@ services:
   # Main application service
   tandoor:
     container_name: tandoor
-    image: vabene1111/recipes
+    image: vabene1111/recipes:2.0.3@sha256:4388fa78422b8c5f32a61e169433989b2acc988af7db865baffa11ecdf4d5907
     restart: unless-stopped
     volumes:
       - /data/recipes/staticfiles:/opt/recipes/staticfiles
@@ -29,7 +29,7 @@ services:
 
   # PostgreSQL database service
   tandoor-db:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     container_name: tandoor-db
     volumes:
       - /docker/db_recipes/postgresql:/var/lib/postgresql/data

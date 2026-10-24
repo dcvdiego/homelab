@@ -1,0 +1,120 @@
+# Image version policy (docs/image-versions.md). GitHub-hosted runners, no secrets.
+#   check            every PR touching images: scripts/check-images.py (pinned, documented, has a
+#                    Renovate rule, no skipped release lines) + scripts/upstream-compose.py --check
+#   sync-companions  Renovate PRs only: rewrite companion images (database, cache) to the ones in the
+#                    project's compose file for the new app version, and push that to the PR branch
+#   drift            Mondays: the same checks against main; opens/updates/closes an issue
+# Undo: delete this file.
+name: image-policy
+
+on:
+  pull_request:
+    paths:
+      - "docker-compose/**"
+      - "renovate.json"
+      - "docs/image-versions.md"
+      - "scripts/check-images.py"
+      - "scripts/upstream-compose.py"
+      - "scripts/imagelib.py"
+      - "scripts/image-policy.json"
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-policy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-companions:
+    # Same-repo Renovate branches only. Main's copy of the script runs against the PR checkout, so a
+    # PR can't change what runs with the write token.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'renovate/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+          path: pr
+      - name: Sync companion images with the upstream compose
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set +e
+          python3 base/scripts/upstream-compose.py --fix --root pr --report report.md
+          rc=$?
+          set -e
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          if ! git -C pr diff --quiet; then
+            git -C pr config user.name "github-actions[bot]"
+            git -C pr config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C pr commit -qam "Sync companion images with the upstream compose (scripts/upstream-compose.py)"
+            git -C pr push -q origin "HEAD:$HEAD_REF"
+            echo "Pushed the companion image sync; checks below ran on it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ "$rc" -eq 2 ]; then
+            echo "::error::Upstream added or removed a companion service: change the stack by hand (see the job summary)"
+          fi
+          exit "$rc"
+
+  check:
+    needs: sync-companions
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Renovate branches: the branch tip, which includes the sync commit above
+          ref: ${{ startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || '' }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Image policy
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 scripts/check-images.py --base "origin/$BASE_REF"
+      - name: Companion images match the upstream compose
+        run: python3 scripts/upstream-compose.py --check --report report.md; rc=$?; cat report.md >> "$GITHUB_STEP_SUMMARY"; exit $rc
+
+  drift:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check main and report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 scripts/upstream-compose.py --check --report report.md; a=$?
+          python3 scripts/check-images.py > policy.txt; b=$?
+          set -e
+          { echo "Weekly check of \`main\` ([run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)). Rules: docs/image-versions.md."; echo;
+            echo "## Image policy"; echo '```'; cat policy.txt; echo '```'; echo; echo "## Companion images vs upstream compose"; cat report.md; } > body.md
+          title="Image policy / upstream compose drift"
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number')
+          if [ "$a" -ne 0 ] || [ "$b" -ne 0 ]; then
+            if [ -n "$num" ]; then gh issue comment "$num" -F body.md; else gh issue create -t "$title" -F body.md; fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" -c "Resolved: main matches the policy and the upstream compose files."
+          fi
