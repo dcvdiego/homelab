@@ -1,0 +1,25 @@
+# Push every local ban to ntfy (topic homelab) so a false positive on our own IP is noticed at once.
+# ntfy user "crowdsec": write-only on homelab; its token comes from /docker/crowdsec/ntfy.env
+# (root, 600 on docker-prod, mounted at /run/secrets/ntfy.env).
+# Reaches ntfy over network_default, so no Cloudflare in the path.
+type: http
+name: http_default
+log_level: info
+
+group_wait: 30s
+group_threshold: 10
+max_retry: 3
+timeout: 10s
+
+format: |
+  {{- range . }}{{ $src := .Source }}{{ range .Decisions -}}
+  {{ .Value }}{{ with $src.AsName }} ({{ $src.Cn }}, {{ . }}){{ end }} banned {{ .Duration }}: {{ .Scenario }}
+  Unban: docker exec crowdsec cscli decisions delete --{{ .Scope | lower }} {{ .Value }}
+  {{ end }}{{ end }}
+
+url: http://ntfy/homelab
+method: POST
+headers:
+  Authorization: Bearer ${CROWDSEC_NTFY_TOKEN}
+  Title: CrowdSec ban
+  Tags: no_entry
