@@ -167,11 +167,13 @@ recommendations: [docs/networking.md → DNS](docs/networking.md#failure-modes-a
 No host port: reach it at `https://status.$DOMAIN`, which is behind Cloudflare Access
 publicly but resolves to Traefik (`192.168.1.224`) via Technitium split DNS on LAN/tailnet (A record
 only, so force IPv4). Provision monitors with `scripts/uptime-kuma-monitors.py`. It is idempotent
-(skips existing names) and needs `KUMA_USER`, `KUMA_PWD`, `KUMA_PUSH_TAILNET_DNS` from `.env` and `DOMAIN` from `site.env`. WSL
-has no venv support; run it on the agents box:
+(creates missing monitors, updates changed HTTP URLs, deletes `RETIRED` ones) and needs `KUMA_USER`, `KUMA_PWD`,
+`KUMA_PUSH_DB_DUMPS`, `KUMA_NTFY_TOKEN` from `.env` and `DOMAIN` from `site.env`. Push tokens for checks that run
+on the agents box (`KUMA_PUSH_TAILNET_DNS`, `KUMA_PUSH_DNS_PROD_LAN`, `KUMA_PUSH_DNS_ZONE_LAN`) live in
+`~/.config/homelab/kuma-push.env` there, next to the timers that use them. WSL has no venv support; run it on the agents box:
 ```bash
 scp -q scripts/uptime-kuma-monitors.py agents:/tmp/k.py
-cat site.env <(grep -E '^KUMA_' .env) | ssh agents 'set -a; . /dev/stdin; set +a; \
+cat site.env <(grep -E '^KUMA_' .env) | ssh agents 'set -a; . /dev/stdin; . ~/.config/homelab/kuma-push.env; set +a; \
   /home/linuxbrew/.linuxbrew/bin/uv run -q --no-project --with "python-socketio[client]" \
   --with websocket-client python /tmp/k.py; rm -f /tmp/k.py'
 ```

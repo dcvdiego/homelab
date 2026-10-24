@@ -83,9 +83,9 @@ Monitoring (Uptime Kuma, group **DNS**, from `scripts/uptime-kuma-monitors.py`):
 
 | Monitor | What it proves |
 |---|---|
-| DNS: Technitium docker-prod | `192.168.1.224` resolves `example.com` (LAN) |
+| DNS: Technitium docker-prod (LAN push) | `192.168.1.224` resolves `example.com` **from the LAN**. Pushed every 5 min by the agents box (`lan-dns-check.timer`, token `KUMA_PUSH_DNS_PROD_LAN` in `~/.config/homelab/kuma-push.env` there). Kuma can't query it itself: UDP from a container on docker-prod to docker-prod's own LAN IP is answered by docker-proxy from the bridge address (172.19.0.1), so Kuma's resolver drops the reply (ETIMEOUT). Real LAN/tailnet clients take the DNAT path and are unaffected. |
 | DNS: Technitium docker-tower | `192.168.1.248` resolves `example.com` (LAN) |
-| DNS: homelab.lan zone | the local zone is served (`frigate.homelab.lan`) |
+| DNS: homelab.lan zone (LAN push) | the local zone is served (`frigate.homelab.lan` on `192.168.1.224`), same pusher, token `KUMA_PUSH_DNS_ZONE_LAN` |
 | DNS: tailnet resolver (push) | docker-prod's tailnet address answers **over Tailscale**. Pushed every 5 min by the agents box (LXC 102, `tailnet-dns-check.timer`, token in `~/.config/homelab/kuma-push.env` there). Kuma runs on docker-prod and can't see docker-prod's own tailnet status, so a tailnet node does the check; no push for 6 min → alert. |
 
 ### Open recommendations

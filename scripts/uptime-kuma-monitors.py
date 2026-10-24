@@ -42,9 +42,14 @@ MONITORS = [
      "parent_name": "Infrastructure"},
     # --- DNS (see docs/networking.md#dns-failure-modes) ---
     # Technitium answering on the LAN, per instance, plus the local zone it serves.
-    {"name": "DNS: Technitium docker-prod",  "type": "dns", "hostname": "example.com",         "dns_server": "192.168.1.224", "parent_name": "DNS"},
     {"name": "DNS: Technitium docker-tower", "type": "dns", "hostname": "example.com",         "dns_server": "192.168.1.248", "parent_name": "DNS"},
-    {"name": "DNS: homelab.lan zone",        "type": "dns", "hostname": "frigate.homelab.lan", "dns_server": "192.168.1.224", "parent_name": "DNS"},
+    # docker-prod's Technitium can't be queried from Kuma (UDP from a container on docker-prod to the host's
+    # LAN IP is answered from the bridge address by docker-proxy, so the reply is dropped). The agents box
+    # (LAN client, lan-dns-check.timer) checks it and pushes; docker-tower's instance is checked directly.
+    {"name": "DNS: Technitium docker-prod (LAN push)", "type": "push", "push_env": "KUMA_PUSH_DNS_PROD_LAN",
+     "push_token": os.environ.get("KUMA_PUSH_DNS_PROD_LAN", ""), "parent_name": "DNS"},
+    {"name": "DNS: homelab.lan zone (LAN push)", "type": "push", "push_env": "KUMA_PUSH_DNS_ZONE_LAN",
+     "push_token": os.environ.get("KUMA_PUSH_DNS_ZONE_LAN", ""), "parent_name": "DNS"},
     # The tailnet's resolver (docker-prod's 100.x address) as tailnet devices reach it. Kuma runs on
     # docker-prod and can't see docker-prod drop off Tailscale, so the agents box
     # (LXC 102) queries it over the tailnet and pushes here only when that works.
@@ -69,7 +74,11 @@ MONITORS = [
 GROUPS = ["Monitoring", "Infrastructure", "DNS", "Media", "Apps"]
 
 # Monitors for services that no longer exist; deleted if present.
-RETIRED = ["Portainer"]  # replaced by Komodo (2026-10-07)
+RETIRED = [
+    "Portainer",                     # replaced by Komodo (2026-10-07)
+    "DNS: Technitium docker-prod",   # replaced by the LAN push monitors (2026-10-24)
+    "DNS: homelab.lan zone",
+]
 
 # ntfy alerts: Kuma reaches ntfy over network_default (no Cloudflare). Token for ntfy user
 # "kuma" (write-only on topic homelab) in KUMA_NTFY_TOKEN; skipped when unset.
