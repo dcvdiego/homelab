@@ -218,7 +218,9 @@ homelab/
 ├── renovate.json          # image update rules (docs/image-versions.md)
 ├── ops/                   # agent access: Warpgate setup and notifier, PR request runner, request guide;
 │                          #   pending-workflows/: workflow changes for the owner to move into .github/
-├── .github/workflows/     # apply.yml: applies approved PRs on the self-hosted runner; pr-agent.yml; image-policy.yml
+├── .github/workflows/     # apply.yml: applies approved PRs on the self-hosted runner; pr-agent.yml;
+│                          #   image-policy.yml (until the owner installs it from ops/pending-workflows/, its
+│                          #   checks don't run in CI: run scripts/check-images.py locally)
 ├── scripts/               # helpers (Kuma monitors, Technitium, restore test, Warpgate) and the image policy
 │                          #   checks: check-images.py, upstream-compose.py, image-policy.json
 ├── docs/                  # design notes: agent access, networking/DNS, agents box, Komodo migration
