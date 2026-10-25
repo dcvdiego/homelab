@@ -29,15 +29,20 @@ KEEP=3
 HELPER=alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a # renovate: image
 OUT=$ROOT/$STACK/$(date +%Y%m%d-%H%M%S)
 STOPPED=""
+COMPLETE=false
 
 log() { echo "pre-deploy-backup[$STACK]: $*"; }
 
-restart_stopped() {
+# On exit: start what we stopped; drop a partial backup so it never counts toward the $KEEP kept
+on_exit() {
   for c in $STOPPED; do
     if docker start "$c" >/dev/null 2>&1; then log "started $c"; else log "WARNING: could not start $c"; fi
   done
+  if [ "$COMPLETE" != true ] && [ -d "$OUT" ]; then
+    rm -rf "$OUT" && log "removed incomplete $OUT"
+  fi
 }
-trap restart_stopped EXIT
+trap on_exit EXIT
 
 running() { [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" = true ]; }
 
@@ -120,8 +125,11 @@ case "$STACK" in
     exit 0 ;;
 esac
 
-# Keep the newest $KEEP backups of this stack
+COMPLETE=true
+
+# Keep the newest $KEEP backups of this stack. A failure here only warns: the new backup is good, so
+# it shouldn't block the deploy.
 find "$ROOT/$STACK" -mindepth 1 -maxdepth 1 -type d | sort -r | tail -n +$((KEEP + 1)) | while read -r old; do
-  rm -rf "$old"
+  rm -rf "$old" || log "WARNING: could not remove old backup $old"
 done
 log "done: $OUT"
