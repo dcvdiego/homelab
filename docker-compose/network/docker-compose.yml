@@ -1,7 +1,7 @@
 services:
   tunnel:
     container_name: cloudflared-tunnel
-    image: cloudflare/cloudflared
+    image: cloudflare/cloudflared:2024.10.1@sha256:52b9529db08f7ef827a2bce04b91945b475c651e46f583c30b70dd6773262ae3
     restart: unless-stopped
     command: tunnel --protocol http2 run
     environment:
@@ -12,7 +12,7 @@ services:
   technitium:
     container_name: technitium-dns
     hostname: technitium-dns
-    image: technitium/dns-server:latest
+    image: technitium/dns-server:14.3.0@sha256:322b236403ca25028032f28736e2270a860527b030b162c9f82451c6494c4698
     ports:
       - "${HOST_IP:-0.0.0.0}:5380:5380/tcp"  # web UI
       - "${HOST_IP:-0.0.0.0}:53:53/udp"       # DNS

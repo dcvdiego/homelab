@@ -2,7 +2,7 @@ version: "3"
 services:
   loki:
     container_name: loki
-    image: grafana/loki:3.6.10
+    image: grafana/loki:3.6.10@sha256:f59e6aedfee6af2388d69962b178a35a23152573b4bf0937106746deb7146ec7
     volumes:
       - /docker/grafana-monitoring/loki:/etc/loki
     ports:
@@ -12,7 +12,7 @@ services:
 
   alloy:
     container_name: alloy
-    image: grafana/alloy:v1.15.0
+    image: grafana/alloy:v1.15.0@sha256:579582bce40049f2e27bd1e445000689c907a41f0495cb0d0c7f65609316ba7c
     restart: unless-stopped
     volumes:
       - /docker/grafana-monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
@@ -30,7 +30,7 @@ services:
   grafana:
     user: "0"
     container_name: grafana
-    image: grafana/grafana-oss:12.0.2
+    image: grafana/grafana-oss:12.0.2@sha256:b5b59bfc7561634c2d7b136c4543d702ebcc94a3da477f21ff26f89ffd4214fa
     environment:
       - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
     volumes:
@@ -45,7 +45,7 @@ services:
 
   influxdb:
     container_name: influxdb
-    image: influxdb:latest
+    image: influxdb:2.8.0@sha256:37c75d2588b1f5e7d75f21df9d593a213a4a0a2d5b1c1220728d01b3cb5ee1c4
     restart: unless-stopped
     ports:
       - 8086:8086
@@ -68,11 +68,11 @@ services:
         - HOST_VAR=/hostfs/var
         - HOST_RUN=/hostfs/run
         - HOST_MOUNT_PREFIX=/hostfs
-    image: telegraf:latest
+    image: telegraf:1.38.2@sha256:74fa2ce3d3e0eba543bf67d022c1c6bd7e7716f0cabb53641b5696a4bd915c6f
     user: telegraf:999
 
   prometheus:
-    image: prom/prometheus:v3.11.1
+    image: prom/prometheus:v3.11.1@sha256:759ea6db49103737f2a6f420b0d1632062d8ad99dec086c76db605fd0bf23e15
     container_name: prometheus
     restart: unless-stopped
     ports:
@@ -81,7 +81,7 @@ services:
       - /docker/grafana-monitoring/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml
 
   uptime-kuma:
-    image: louislam/uptime-kuma:2
+    image: louislam/uptime-kuma:2.2.1@sha256:7337368a77873f159435de9ef09567f68c31285ed5f951dec36256c4b267ee44
     container_name: uptime-kuma
     restart: unless-stopped
     volumes:
