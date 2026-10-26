@@ -40,6 +40,7 @@ on_exit() {
   done
   if [ "$COMPLETE" != true ] && [ -d "$OUT" ]; then
     rm -rf "$OUT" && log "removed incomplete $OUT"
+    rmdir "$ROOT/$STACK" 2>/dev/null || true
   fi
 }
 trap on_exit EXIT
@@ -70,19 +71,27 @@ pg() {
 
 # files <name> <host dir> [tar --exclude patterns...]
 # The host dir isn't visible inside Periphery, so a helper container reads it. --mount (unlike -v)
-# fails on a missing path instead of creating it.
+# fails on a missing path instead of creating it. The helper image is pulled up front, so the probe
+# below can only fail on a missing path.
 files() {
   name=$1 src=$2; shift 2
   if ! docker run --rm --network none --mount "type=bind,src=$src,dst=/src,readonly" "$HELPER" true >/dev/null 2>&1; then
     log "skip $name: $src not found"; return 0
   fi
-  ex=""
-  for p in "$@"; do ex="$ex --exclude=./$p"; done
-  # shellcheck disable=SC2086
+  # Exclude patterns as separate quoted args so the shell never expands their globs
+  n=$#
+  for p; do set -- "$@" "--exclude=./$p"; done
+  shift "$n"
   docker run --rm --network none --mount "type=bind,src=$src,dst=/src,readonly" \
-    --mount "type=bind,src=$OUT,dst=/out" "$HELPER" tar czf "/out/$name.tar.gz" -C /src $ex .
+    --mount "type=bind,src=$OUT,dst=/out" "$HELPER" tar czf "/out/$name.tar.gz" -C /src "$@" .
   log "ok $name $(du -h "$OUT/$name.tar.gz" | cut -f1)"
 }
+
+# Without Docker every check below would look like "not running" and skip
+docker version >/dev/null 2>&1 || { log "FAIL: Docker not reachable"; exit 1; }
+# Pull the helper before anything is stopped
+docker image inspect "$HELPER" >/dev/null 2>&1 || docker pull -q "$HELPER" >/dev/null \
+  || { log "FAIL: could not pull $HELPER"; exit 1; }
 
 mkdir -p "$OUT"
 chmod 700 "$ROOT"
@@ -120,9 +129,9 @@ case "$STACK" in
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;
   *)
-    log "no pre-deploy backup configured for this stack"
-    rmdir "$OUT" 2>/dev/null || true
-    exit 0 ;;
+    # Pre Deploy is only set on the stacks above; an unknown name means this list wasn't updated
+    log "FAIL: no backup defined for this stack; add it to the case list in this script"
+    exit 1 ;;
 esac
 
 COMPLETE=true
