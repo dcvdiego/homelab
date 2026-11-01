@@ -235,9 +235,14 @@ def notes(spec, cur, tgt):
         if spec["lines"] == "ha_blog":
             blog = ha_blog_lines()
             lines = sorted(v for v in blog if in_range(v, cur[:n] if cur else None, tgt[:n] if tgt else None))
+            if not lines and cur and tgt and cur[:n] == tgt[:n] and cur[:n] in blog:
+                # patch release in the running line: HA only ships breaking changes in the monthly release
+                return [(f"{vstr(cur[:n])} patch releases", blog[cur[:n]][1], "")]
             return [(vstr(v), blog[v][1], extract(fetch(blog[v][0]) or "", everything)) for v in lines]
         lines = sorted({r[0][:n] for r in gh_releases(spec["lines"]) if in_range(r[0], cur, tgt)
                         and (not cur or r[0][:n] > cur[:n])})
+        if not lines:  # patch update inside the running line: the line's upgrade page was read already
+            return notes(spec["lines"], cur, tgt)
         out = []
         for v in lines:
             fields = {"line": vstr(v), "major": v[0], "minor": v[1] if len(v) > 1 else 0}
