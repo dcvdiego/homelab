@@ -67,10 +67,21 @@ Still open: PBS in CT 105 runs 3.4.8 with 3.4.9 installed (Phase C restarts it);
 fails (no IPMI hardware, also before the upgrade); old 6.8 kernels (Phase D); commented bookworm
 `.list` files (`apt modernize-sources`, Phase D).
 
-### Phase C: PBS 3 → 4 (CT 105, about 15 min, backups only)
+### Phase C: PBS 3 → 4 (CT 105, done 2026-11-01)
 
-`apt full-upgrade` on 3.4 → `vzdump 105` to local `backups` storage → sources to trixie →
-`dist-upgrade` → restart → test backup + `proxmox-backup-manager notification target test ntfy`.
+Followed https://pbs.proxmox.com/wiki/Upgrade_from_3_to_4 (it doesn't cover PBS in an LXC):
+config tar `/root/pbs3-etc-backup-2026-11-01.tar.gz` (on pvehost) + `vzdump 105` to `backups` →
+datastore read-only maintenance → latest 3.4 (3.4.9) → `sources.list` to trixie, `pbs.list` and the
+empty `pbs-enterprise.list` replaced by `proxmox.sources` (`pbs-no-subscription`; old files in
+`/root/apt-backup-2026-11-01/` in the CT) → `dist-upgrade` with `--force-confold` (≈2 min) →
+`pct reboot 105` → maintenance cleared.
+
+Result: PBS 4.2.8 on Debian 13; `dpkg --audit` clean; ntfy test notification sent; a host config
+backup from PVE 9 to PBS 4 worked. `pbs3to4` still shows the container false positives (package
+FAIL, kernel, NTP, GRUB). Took the package `/etc/cron.d/e2scrub_all`; kept `/etc/crontab` and
+`/etc/issue` (package versions in `/root/phasec-dpkg-dist/`). `zfs-mount`, `zfs-share` and
+`zfs-zed` fail inside the CT: zfsutils is a PBS dependency, but the container has no `/dev/zfs`.
+Harmless.
 
 ### Phase D: later
 

@@ -57,7 +57,7 @@ Design and threat model: [docs/agent-access.md](docs/agent-access.md).
 | docker-tower | LXC | 192.168.1.248 | 104 | Docker + Komodo Core (`:9120`, UI `https://komodo.$DOMAIN`) + Periphery |
 | jellyfin | LXC | 192.168.1.174 | 201 | Media server |
 | warpgate | LXC | 192.168.1.227 | 106 | Warpgate SSH gateway for agents: SSH :2222, admin UI https://warpgate.homelab.lan:8888 (see docs/agent-access.md) |
-| pbs | LXC | 192.168.1.251 | 105 | Proxmox Backup Server 3.4.8 (primary, pbs-lxc storage, homelab-backups datastore 3TB HDD) |
+| pbs | LXC | 192.168.1.251 | 105 | Proxmox Backup Server 4.2.8 (primary, pbs-lxc storage, homelab-backups datastore 3TB HDD) |
 | pbs-pc | Ubuntu dual-boot | 192.168.1.50 | — | PBS secondary (Docker, sync from LXC) |
 
 Backups (vzdump → PBS, host config, nightly DB dumps), retention and ntfy notifications:
