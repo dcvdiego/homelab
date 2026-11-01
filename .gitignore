@@ -62,3 +62,4 @@ terraform.rc
 # Personal notes and raw agent session transcripts
 TODO.md
 session-*.md
+__pycache__/

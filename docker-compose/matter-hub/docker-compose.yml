@@ -1,6 +1,6 @@
 services:
   matter-hub:
-    image: ghcr.io/riddix/home-assistant-matter-hub:latest
+    image: ghcr.io/riddix/home-assistant-matter-hub:2.0.57@sha256:3f63aca9cd94162c0736859b43949e95d164d2d47dbd1239574738e583c77661
     container_name: matter-hub
     restart: unless-stopped
     # Host networking required for Matter (mDNS + IPv6); bridge must use port 5540 for Alexa

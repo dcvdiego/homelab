@@ -1,0 +1,244 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Image update policy. Every image follows its project's own docs; the rule for each one and why is in docs/image-versions.md, and scripts/check-images.py fails a PR whose image isn't covered here.",
+  "extends": ["config:recommended", "docker:pinDigests"],
+  "timezone": "Europe/London",
+  "schedule": ["* * * * 6"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "prConcurrentLimit": 6,
+  "prHourlyLimit": 0,
+  "labels": ["renovate"],
+  "gitIgnoredAuthors": ["41898282+github-actions[bot]@users.noreply.github.com"],
+  "separateMultipleMajor": true,
+  "dependencyDashboardTitle": "Renovate: image updates",
+  "enabledManagers": ["docker-compose", "dockerfile", "custom.regex"],
+  "ignorePaths": [
+    "docker-compose/cloudflare-tunnel/**",
+    "docker-compose/immich/**",
+    "docker-compose/mc/**",
+    "docker-compose/network-ep3/**",
+    "docker-compose/network-ep4/**",
+    "docker-compose/servarr-dev/**",
+    "docker-compose/tandoor/**",
+    "docker-compose/technitium/**",
+    "docker-compose/tunnel/**"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Images referenced from scripts, marked with a '# renovate: image' comment on the same line",
+      "managerFilePatterns": ["/^scripts/.+\\.sh$/"],
+      "matchStrings": ["(?<depName>[a-z0-9./-]+):(?<currentValue>[^@\\s\"']+)@(?<currentDigest>sha256:[a-f0-9]{64})\\S*\\s+# renovate: image"],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Weekly batch: minor, patch and digest updates of non-critical images in one PR. Major updates still get their own PR.",
+      "matchPackageNames": [
+        "crowdsecurity/crowdsec",
+        "tecnativa/docker-socket-proxy",
+        "binwiederhier/ntfy",
+        "telegraf",
+        "grafana/alloy",
+        "prom/prometheus",
+        "grafana/loki",
+        "grafana/grafana-oss",
+        "louislam/uptime-kuma",
+        "ghcr.io/hotio/radarr",
+        "ghcr.io/hotio/sonarr",
+        "ghcr.io/hotio/prowlarr",
+        "ghcr.io/hotio/sabnzbd",
+        "lscr.io/linuxserver/bazarr",
+        "ghcr.io/seerr-team/seerr",
+        "cy01/blackhole",
+        "deluan/navidrome",
+        "ghcr.io/bambanah/deemix",
+        "lscr.io/linuxserver/beets",
+        "collabora/code",
+        "ollama/ollama",
+        "bugattiguy527/termix",
+        "devture/exim-relay",
+        "ghcr.io/gethomepage/homepage",
+        "alpine",
+        "ghcr.io/actions/actions-runner",
+        "/^(docker\\.io/(library/)?)?(postgres|redis|mariadb|couchdb|influxdb|memcached|rabbitmq)$/",
+        "zulip/zulip-postgresql"
+      ],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pinDigest"],
+      "groupName": "weekly batch (non-critical images)",
+      "groupSlug": "weekly-batch"
+    },
+    {
+      "description": "Every update of a breaking-prone or critical image gets its own PR and is read before merging.",
+      "matchPackageNames": [
+        "ghcr.io/immich-app/immich-server",
+        "ghcr.io/immich-app/immich-machine-learning",
+        "ghcr.io/goauthentik/server",
+        "vaultwarden/server",
+        "ghcr.io/home-assistant/home-assistant",
+        "eclipse-mosquitto",
+        "ghcr.io/koenkk/zigbee2mqtt",
+        "openthread/border-router",
+        "ghcr.io/matter-js/matterjs-server",
+        "ghcr.io/riddix/home-assistant-matter-hub",
+        "ghcr.io/blakeblackshear/frigate",
+        "nextcloud",
+        "ghcr.io/zulip/zulip-server",
+        "vabene1111/recipes",
+        "ghcr.io/open-webui/open-webui",
+        "vikunja/vikunja",
+        "technitium/dns-server",
+        "cloudflare/cloudflared",
+        "traefik",
+        "ghcr.io/moghtech/komodo-core",
+        "ghcr.io/moghtech/komodo-periphery",
+        "mongo",
+        "ghcr.io/nikosch86/docker-proxmox-backup-server"
+      ],
+      "addLabels": ["review"]
+    },
+    {
+      "description": "Major updates: own PR, labelled.",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["breaking"]
+    },
+    {
+      "description": "Database majors need a dump and restore (or the app's own migration): never as an image bump. MongoDB is the exception: its docs upgrade in place one major at a time (sequential rule in scripts/image-policy.json).",
+      "matchPackageNames": ["/^(docker\\.io/(library/)?)?(postgres|mariadb|couchdb)$/"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "InfluxDB 3 is a different product, not an upgrade of 2.x.",
+      "matchPackageNames": ["influxdb"],
+      "allowedVersions": "<3"
+    },
+    {
+      "description": "Companions that follow the app's own compose file: only same-tag rebuilds (digest) from Renovate; tag changes come from scripts/upstream-compose.py --fix on the app's update PR.",
+      "matchFileNames": ["docker-compose/security/docker-compose.yml", "docker-compose/zulip/docker-compose.yml"],
+      "matchPackageNames": ["/^(docker\\.io/(library/)?)?(postgres|redis|memcached|rabbitmq)$/", "zulip/zulip-postgresql"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false
+    },
+    {
+      "description": "Immich pins its companions by digest in its release compose: Renovate never touches them.",
+      "matchFileNames": ["docker-compose/photos/docker-compose.yml"],
+      "matchPackageNames": ["docker.io/redis", "docker.io/valkey/valkey", "ghcr.io/immich-app/postgres"],
+      "enabled": false
+    },
+    {
+      "description": "Readarr is retired upstream (archived July 2025): no updates exist. Remove or replace it.",
+      "matchPackageNames": ["lscr.io/linuxserver/readarr"],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": ["ghcr.io/immich-app/immich-server", "ghcr.io/immich-app/immich-machine-learning"],
+      "groupName": "Immich",
+      "groupSlug": "immich",
+      "prBodyNotes": ["**Immich**: read every release's notes for breaking changes, update the phone apps first on a major, back up first (Komodo pre-deploy does). Companion images are synced from the release compose by CI. Docs: https://docs.immich.app/install/upgrading/"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/goauthentik/server"],
+      "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+      "separateMultipleMinor": true,
+      "prBodyNotes": ["**authentik**: never skip a release line (2025.10 → 2025.12 → 2026.2 …); CI fails a PR that does. No downgrades: back up first (Komodo pre-deploy does). Docs: https://docs.goauthentik.io/install-config/upgrade/"]
+    },
+    {
+      "matchPackageNames": ["nextcloud"],
+      "prBodyNotes": ["**Nextcloud**: one major version at a time; CI fails a PR that skips one. Docs: https://github.com/nextcloud/docker#update-to-a-newer-version"]
+    },
+    {
+      "matchPackageNames": ["mongo"],
+      "prBodyNotes": ["**MongoDB** (Komodo's database): one major at a time, and set featureCompatibilityVersion after each. Komodo Core isn't a Komodo stack: deploy it by hand (docs/image-versions.md)."]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/moghtech/komodo-core", "ghcr.io/moghtech/komodo-periphery"],
+      "groupName": "Komodo",
+      "groupSlug": "komodo",
+      "prBodyNotes": ["**Komodo**: Core and both Periphery agents must run the same version. They aren't Komodo stacks: after merging, deploy them by hand (docs/image-versions.md). Release notes: https://github.com/moghtech/komodo/releases"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/home-assistant/home-assistant"],
+      "prBodyNotes": ["**Home Assistant**: every monthly release has a 'Backward-incompatible changes' section: read it for the integrations in use. Docs: https://www.home-assistant.io/blog/categories/release-notes/"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/blakeblackshear/frigate"],
+      "sourceUrl": "https://github.com/blakeblackshear/frigate",
+      "prBodyNotes": ["**Frigate**: check the release notes for config changes; /config (config.yml, frigate.db) is backed up by the Komodo pre-deploy. Docs: https://docs.frigate.video/frigate/updating"]
+    },
+    {
+      "matchPackageNames": ["vaultwarden/server"],
+      "prBodyNotes": ["**Vaultwarden**: read the release notes (some releases need client or config changes); /data is backed up by the Komodo pre-deploy. Releases: https://github.com/dani-garcia/vaultwarden/releases"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/koenkk/zigbee2mqtt"],
+      "prBodyNotes": ["**Zigbee2MQTT**: check the changelog for breaking changes and adapter firmware notes. Releases: https://github.com/Koenkk/zigbee2mqtt/releases"]
+    },
+    {
+      "matchPackageNames": ["openthread/border-router"],
+      "versioning": "regex:^v(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+      "prBodyNotes": ["**OpenThread Border Router**: follows the monthly vYYYY.MM.x release tags. Releases: https://github.com/openthread/ot-br-posix/releases"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/matter-js/matterjs-server"],
+      "sourceUrl": "https://github.com/matter-js/matterjs-server"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/riddix/home-assistant-matter-hub"],
+      "sourceUrl": "https://github.com/RiDDiX/home-assistant-matter-hub",
+      "prBodyNotes": ["**Matter Hub**: some releases need devices re-paired: read the release notes. Docs: https://github.com/RiDDiX/home-assistant-matter-hub"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/zulip/zulip-server"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<patch>\\d+)$",
+      "prBodyNotes": ["**Zulip**: read the upgrade notes for every version in between; companion images are synced from docker-zulip's compose by CI. Docs: https://github.com/zulip/docker-zulip, https://zulip.readthedocs.io/en/latest/overview/changelog.html"]
+    },
+    {
+      "matchPackageNames": ["vabene1111/recipes"],
+      "prBodyNotes": ["**Tandoor**: database migrations can't be undone: read the release notes. Docs: https://docs.tandoor.dev/install/docker/"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/open-webui/open-webui"],
+      "prBodyNotes": ["**Open WebUI**: pin vX.Y.Z (never :main), back up before every update (Komodo pre-deploy does). Docs: https://docs.openwebui.com/getting-started/updating"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/hotio/radarr", "ghcr.io/hotio/sonarr", "ghcr.io/hotio/prowlarr"],
+      "versioning": "regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)$"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/hotio/sabnzbd"],
+      "versioning": "regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+      "sourceUrl": "https://github.com/sabnzbd/sabnzbd"
+    },
+    {"matchPackageNames": ["ghcr.io/hotio/radarr"], "sourceUrl": "https://github.com/Radarr/Radarr"},
+    {"matchPackageNames": ["ghcr.io/hotio/sonarr"], "sourceUrl": "https://github.com/Sonarr/Sonarr"},
+    {"matchPackageNames": ["ghcr.io/hotio/prowlarr"], "sourceUrl": "https://github.com/Prowlarr/Prowlarr"},
+    {
+      "matchPackageNames": ["lscr.io/linuxserver/bazarr"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-ls(?<build>\\d+)$",
+      "sourceUrl": "https://github.com/morpheus65535/bazarr"
+    },
+    {
+      "matchPackageNames": ["lscr.io/linuxserver/beets"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-ls(?<build>\\d+)$",
+      "sourceUrl": "https://github.com/beetbox/beets"
+    },
+    {
+      "matchPackageNames": ["devture/exim-relay"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(\\.(?<patch>\\d+))?-r(?<build>\\d+)-(?<revision>\\d+)$"
+    },
+    {
+      "matchPackageNames": ["bugattiguy527/termix"],
+      "versioning": "regex:^(release-)?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {"matchPackageNames": ["telegraf"], "sourceUrl": "https://github.com/influxdata/telegraf"},
+    {"matchPackageNames": ["influxdb"], "sourceUrl": "https://github.com/influxdata/influxdb"},
+    {"matchPackageNames": ["grafana/loki"], "sourceUrl": "https://github.com/grafana/loki"},
+    {"matchPackageNames": ["nextcloud"], "sourceUrl": "https://github.com/nextcloud/server"},
+    {"matchPackageNames": ["couchdb"], "sourceUrl": "https://github.com/apache/couchdb"},
+    {"matchPackageNames": ["ollama/ollama"], "sourceUrl": "https://github.com/ollama/ollama"},
+    {"matchPackageNames": ["collabora/code"], "sourceUrl": "https://github.com/CollaboraOnline/online"}
+  ]
+}

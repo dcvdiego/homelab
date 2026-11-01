@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   deemix:
-    image: ghcr.io/bambanah/deemix:latest
+    image: ghcr.io/bambanah/deemix:v4.2.10@sha256:c327b953bf4a10ee2ccc137670545e7fc1127655ce083cf33b3b1c23214f156f
     container_name: deemix
     volumes:
       - /data/music:/downloads
@@ -15,7 +15,7 @@ services:
       - "traefik.http.services.deemix.loadbalancer.server.port=6595"
 
   navidrome:
-    image: deluan/navidrome:latest
+    image: deluan/navidrome:0.59.0@sha256:4edc8a1de3e042f30b78a478325839f4395177eb8201c27543dccc0eba674f23
     user: 1000:1000
     restart: unless-stopped
     volumes:
@@ -30,7 +30,7 @@ services:
       # NOTE: Navidrome has API clients (DSub, Symfonium) — do NOT add forward auth
 
   beets:
-    image: lscr.io/linuxserver/beets:latest
+    image: lscr.io/linuxserver/beets:2.5.1-ls301@sha256:d591337d1c7bc512b52c8e19a6f881f3095b0bcd4f41b697a3b8f747df6d477d
     container_name: beets
     environment:
       - PUID=1000
