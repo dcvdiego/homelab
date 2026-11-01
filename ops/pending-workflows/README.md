@@ -5,20 +5,18 @@ change what runs in CI). Workflow changes are proposed here and moved into place
 
 | File | Goes to | What |
 |---|---|---|
-| `image-policy.yml` | `.github/workflows/image-policy.yml` (new) | Image policy check on PRs, companion sync on Renovate PRs, weekly drift issue (docs/image-versions.md) |
-| `pr-agent.yml` | `.github/workflows/pr-agent.yml` (replace) | Adds instructions for Renovate PRs (breaking changes and manual steps from the release notes) |
+| `release-notes.yml` | `.github/workflows/release-notes.yml` (new) | Comments the official upgrade notes of pending image updates on the Renovate dashboard issue and on PRs that change versions (scripts/release-notes.py) |
 
 From the owner's machine, after the PR that added them is merged:
 
 ```bash
 git switch main && git pull
-git mv -f ops/pending-workflows/image-policy.yml .github/workflows/image-policy.yml
-git mv -f ops/pending-workflows/pr-agent.yml .github/workflows/pr-agent.yml
-git commit -m "Install image-policy workflow and PR-Agent Renovate instructions" && git push
+git mv -f ops/pending-workflows/release-notes.yml .github/workflows/release-notes.yml
+git commit -m "Install release-notes workflow" && git push
 ```
 
-No repository settings change is needed: the workflow asks for write access only in the jobs that
-need it (`sync-companions`: push to the Renovate branch; `drift`: the issue). Optionally make
-`image-policy / check` a required status check on `main`.
+No repository settings change is needed: the workflow asks for write access only to comment
+(`issues: write`, and `pull-requests: write` in the PR job). After installing it, run it once by hand
+(Actions → release-notes → Run workflow) to fill the dashboard issue right away.
 
 Leave this README here for the next one.

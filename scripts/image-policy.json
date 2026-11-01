@@ -73,5 +73,235 @@
       "line": "^(\\d+)\\.\\d+\\.\\d+$",
       "docs": "https://www.mongodb.com/docs/manual/release-notes/"
     }
+  },
+  "release_notes": {
+    "_comment": "Where each image's official release notes are, for scripts/release-notes.py (upgrade notes on the Renovate dashboard and PRs). Every image needs an entry (scripts/check-images.py); kinds are in the script's docstring. Prefer the project's own upgrade/breaking-changes page over a generic changelog.",
+    "ghcr.io/immich-app/immich-server": {
+      "github": "immich-app/immich"
+    },
+    "ghcr.io/immich-app/immich-machine-learning": {
+      "github": "immich-app/immich"
+    },
+    "ghcr.io/immich-app/postgres": {
+      "link": "https://docs.immich.app/administration/postgres-standalone/"
+    },
+    "ghcr.io/goauthentik/server": {
+      "pages": "https://raw.githubusercontent.com/goauthentik/authentik/main/website/docs/releases/{major}/v{line}.mdx",
+      "html": "https://docs.goauthentik.io/releases/{line}/",
+      "line": 2,
+      "lines": {
+        "github": "goauthentik/authentik",
+        "tag_prefix": "version/"
+      }
+    },
+    "vaultwarden/server": {
+      "github": "dani-garcia/vaultwarden"
+    },
+    "ghcr.io/home-assistant/home-assistant": {
+      "pages": "ha_blog",
+      "line": 2,
+      "lines": "ha_blog"
+    },
+    "eclipse-mosquitto": {
+      "changelog": "https://raw.githubusercontent.com/eclipse-mosquitto/mosquitto/master/ChangeLog.txt",
+      "section": "^\\d+\\.\\d+\\.\\d+ - \\d{4}-\\d\\d-\\d\\d",
+      "url": "https://mosquitto.org/blog/"
+    },
+    "ghcr.io/koenkk/zigbee2mqtt": {
+      "github": "Koenkk/zigbee2mqtt"
+    },
+    "openthread/border-router": {
+      "github": "openthread/ot-br-posix"
+    },
+    "ghcr.io/matter-js/matterjs-server": {
+      "github": "matter-js/matterjs-server"
+    },
+    "ghcr.io/riddix/home-assistant-matter-hub": {
+      "github": "RiDDiX/home-assistant-matter-hub"
+    },
+    "ghcr.io/blakeblackshear/frigate": {
+      "github": "blakeblackshear/frigate"
+    },
+    "nextcloud": {
+      "pages": "https://raw.githubusercontent.com/nextcloud/documentation/master/admin_manual/release_notes/upgrade_to_{major}.rst",
+      "html": "https://docs.nextcloud.com/server/latest/admin_manual/release_notes/upgrade_to_{major}.html",
+      "line": 1,
+      "lines": {
+        "github": "nextcloud/server"
+      },
+      "all": true
+    },
+    "collabora/code": {
+      "link": "https://www.collaboraonline.com/release-notes/"
+    },
+    "ghcr.io/zulip/zulip-server": [
+      {
+        "changelog": "https://raw.githubusercontent.com/zulip/zulip/main/docs/overview/changelog.md",
+        "section": "^### ",
+        "url": "https://zulip.readthedocs.io/en/latest/overview/changelog.html"
+      },
+      {
+        "changelog": "https://raw.githubusercontent.com/zulip/docker-zulip/main/CHANGELOG.md",
+        "section": "^## \\[",
+        "url": "https://github.com/zulip/docker-zulip/blob/main/CHANGELOG.md"
+      }
+    ],
+    "zulip/zulip-postgresql": {
+      "link": "https://github.com/zulip/docker-zulip#upgrading-zulip-postgresql"
+    },
+    "vikunja/vikunja": {
+      "changelog": "https://raw.githubusercontent.com/go-vikunja/vikunja/main/CHANGELOG.md",
+      "section": "^## \\[",
+      "url": "https://github.com/go-vikunja/vikunja/blob/main/CHANGELOG.md"
+    },
+    "vabene1111/recipes": {
+      "github": "TandoorRecipes/recipes"
+    },
+    "ghcr.io/open-webui/open-webui": {
+      "github": "open-webui/open-webui"
+    },
+    "ollama/ollama": {
+      "github": "ollama/ollama"
+    },
+    "bugattiguy527/termix": {
+      "github": "Termix-SSH/Termix"
+    },
+    "ghcr.io/moghtech/komodo-core": {
+      "github": "moghtech/komodo"
+    },
+    "ghcr.io/moghtech/komodo-periphery": {
+      "github": "moghtech/komodo"
+    },
+    "ghcr.io/gethomepage/homepage": {
+      "github": "gethomepage/homepage"
+    },
+    "technitium/dns-server": {
+      "changelog": "https://raw.githubusercontent.com/TechnitiumSoftware/DnsServer/master/CHANGELOG.md",
+      "section": "^## Version ",
+      "url": "https://github.com/TechnitiumSoftware/DnsServer/blob/master/CHANGELOG.md"
+    },
+    "cloudflare/cloudflared": {
+      "changelog": "https://raw.githubusercontent.com/cloudflare/cloudflared/master/RELEASE_NOTES",
+      "section": "^\\d{4}\\.\\d+\\.\\d+\\s*$",
+      "url": "https://github.com/cloudflare/cloudflared/blob/master/RELEASE_NOTES"
+    },
+    "traefik": {
+      "changelog": "https://raw.githubusercontent.com/traefik/traefik/master/docs/content/migrate/v3.md",
+      "section": "^## v",
+      "all": true,
+      "url": "https://doc.traefik.io/traefik/migrate/v3/"
+    },
+    "tecnativa/docker-socket-proxy": {
+      "github": "Tecnativa/docker-socket-proxy"
+    },
+    "crowdsecurity/crowdsec": {
+      "github": "crowdsecurity/crowdsec"
+    },
+    "telegraf": {
+      "github": "influxdata/telegraf"
+    },
+    "influxdb": {
+      "github": "influxdata/influxdb"
+    },
+    "grafana/loki": [
+      {
+        "changelog": "https://raw.githubusercontent.com/grafana/loki/main/docs/sources/setup/upgrade/_index.md",
+        "section": "^## ",
+        "all": true,
+        "url": "https://grafana.com/docs/loki/latest/setup/upgrade/"
+      },
+      {
+        "github": "grafana/loki"
+      }
+    ],
+    "grafana/alloy": {
+      "github": "grafana/alloy"
+    },
+    "prom/prometheus": {
+      "github": "prometheus/prometheus"
+    },
+    "grafana/grafana-oss": {
+      "pages": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/upgrade-guide/upgrade-v{major}/upgrade-v{line}/index.md",
+      "html": "https://grafana.com/docs/grafana/latest/upgrade-guide/upgrade-v{major}/upgrade-v{line}/",
+      "line": 2,
+      "lines": {
+        "github": "grafana/grafana"
+      },
+      "all": true
+    },
+    "louislam/uptime-kuma": {
+      "github": "louislam/uptime-kuma"
+    },
+    "binwiederhier/ntfy": {
+      "github": "binwiederhier/ntfy"
+    },
+    "devture/exim-relay": {
+      "link": "https://github.com/devture/exim-relay/blob/main/CHANGELOG.md"
+    },
+    "ghcr.io/hotio/radarr": {
+      "github": "Radarr/Radarr"
+    },
+    "ghcr.io/hotio/sonarr": {
+      "github": "Sonarr/Sonarr"
+    },
+    "ghcr.io/hotio/prowlarr": {
+      "github": "Prowlarr/Prowlarr"
+    },
+    "ghcr.io/hotio/sabnzbd": {
+      "github": "sabnzbd/sabnzbd"
+    },
+    "lscr.io/linuxserver/bazarr": {
+      "github": "morpheus65535/bazarr"
+    },
+    "lscr.io/linuxserver/readarr": {
+      "link": "https://github.com/Readarr/Readarr (retired upstream)"
+    },
+    "ghcr.io/seerr-team/seerr": {
+      "github": "seerr-team/seerr"
+    },
+    "cy01/blackhole": {
+      "github": "sirrobot01/decypharr"
+    },
+    "deluan/navidrome": {
+      "github": "navidrome/navidrome"
+    },
+    "ghcr.io/bambanah/deemix": {
+      "github": "bambanah/deemix",
+      "tag_prefix": "deemix-webui@"
+    },
+    "lscr.io/linuxserver/beets": {
+      "github": "beetbox/beets"
+    },
+    "ghcr.io/nikosch86/docker-proxmox-backup-server": {
+      "github": "nikosch86/docker-proxmox-backup-server",
+      "version": "-(\\d+(?:\\.\\d+)*)$"
+    },
+    "ghcr.io/actions/actions-runner": {
+      "github": "actions/runner"
+    },
+    "mongo": {
+      "link": "https://www.mongodb.com/docs/manual/release-notes/"
+    },
+    "postgres": {
+      "link": "https://www.postgresql.org/docs/release/"
+    },
+    "redis": {
+      "github": "redis/redis"
+    },
+    "mariadb": {
+      "link": "https://mariadb.com/docs/release-notes/community-server/"
+    },
+    "couchdb": {
+      "link": "https://docs.couchdb.org/en/stable/whatsnew/index.html"
+    },
+    "rabbitmq": {
+      "github": "rabbitmq/rabbitmq-server"
+    },
+    "memcached": {
+      "link": "https://github.com/memcached/memcached/wiki/ReleaseNotes"
+    },
+    "alpine": {
+      "link": "https://alpinelinux.org/releases/"
+    }
   }
 }

@@ -8,6 +8,8 @@ excluded) it checks:
      upstream compose verbatim are exempt: scripts/image-policy.json "upstream_compose");
   3. a row in docs/image-versions.md, i.e. someone read that project's docs;
   4. named in a renovate.json packageRule, i.e. it has an update rule;
+  4b. a release-notes source in scripts/image-policy.json "release_notes", so updates to it get the
+     project's upgrade notes quoted on the Renovate dashboard and PRs (scripts/release-notes.py);
   5. with --base <ref>: images under "sequential" in scripts/image-policy.json move at most one
      release line per PR (authentik, Nextcloud, MongoDB docs forbid skipping).
 Exit 1 on any failure; prints GitHub annotations.
@@ -36,6 +38,7 @@ policy = json.loads((ROOT / "scripts/image-policy.json").read_text())
 docs = (ROOT / "docs/image-versions.md").read_text()
 documented = {norm_repo(m) for m in re.findall(r"^\|\s*`([^`]+)`", docs, re.M)}
 ignored = renovate.get("ignorePaths", [])
+notes = {norm_repo(k) for k in policy.get("release_notes", {}) if not k.startswith("_")}
 companions = {(stack, svc) for stack, cfg in policy["upstream_compose"].items() if not stack.startswith("_")
               for svc in cfg["companions"]}
 errors = []
@@ -104,6 +107,9 @@ for (rel, svc), (n, ref) in current.items():
     if norm_repo(repo) not in documented:
         fail(rel, n, f"{svc}: {repo} has no row in docs/image-versions.md: read the project's install/upgrade "
                      f"docs and add its rule (AGENTS.md, 'Adding or updating a stack')")
+    if norm_repo(repo) not in notes:
+        fail(rel, n, f"{svc}: {repo} has no release-notes source under \"release_notes\" in "
+                     f"scripts/image-policy.json: add where the project publishes its release/upgrade notes")
     if not has_rule(repo):
         fail(rel, n, f"{svc}: {repo} isn't named in any renovate.json packageRule; classify it (weekly batch "
                      f"or review) as docs/image-versions.md says")
