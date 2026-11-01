@@ -1,6 +1,6 @@
 services:
   pbs:
-    image: ghcr.io/nikosch86/docker-proxmox-backup-server:v1.1.1-4.1.2
+    image: ghcr.io/nikosch86/docker-proxmox-backup-server:v1.1.1-4.1.2@sha256:99fa12093ec95020b5ee3c172ff31a57f646b51bd974d98376d2401393a4fc41
     container_name: proxmox-backup-server
     restart: unless-stopped
     stop_signal: SIGHUP

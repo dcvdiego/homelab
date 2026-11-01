@@ -1,6 +1,6 @@
 services:
   nextcloud-db:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     container_name: nextcloud-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -11,12 +11,12 @@ services:
     restart: unless-stopped
 
   nextcloud-redis:
-    image: redis:7-alpine
+    image: redis:7.4.8-alpine@sha256:7aec734b2bb298a1d769fd8729f13b8514a41bf90fcdd1f38ec52267fbaa8ee6
     container_name: nextcloud-redis
     restart: unless-stopped
 
   nextcloud:
-    image: nextcloud:30-apache
+    image: nextcloud:30.0.17-apache@sha256:fb966733647ea03f0446b0c22eac9733c8eb616d37b960caca9d4c3010e14a08
     container_name: nextcloud
     environment:
       POSTGRES_HOST: nextcloud-db
@@ -48,7 +48,7 @@ services:
       - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
 
   nextcloud-cron:
-    image: nextcloud:30-apache
+    image: nextcloud:30.0.17-apache@sha256:fb966733647ea03f0446b0c22eac9733c8eb616d37b960caca9d4c3010e14a08
     container_name: nextcloud-cron
     entrypoint: /cron.sh
     environment:
@@ -67,7 +67,7 @@ services:
     restart: unless-stopped
 
   collabora:
-    image: collabora/code:latest
+    image: collabora/code:25.04.9.4.1@sha256:fe49c08c27e102c1877ad4ef2ac1a7bd8ccd2dfaa6641d4533389c204a92bb88
     container_name: collabora
     environment:
       - DONT_GEN_SSL_CERT=YES

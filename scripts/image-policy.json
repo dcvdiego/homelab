@@ -1,0 +1,77 @@
+{
+  "_comment": "Image version policy that Renovate can't express. Read by scripts/check-images.py and scripts/upstream-compose.py. Human-readable rules: docs/image-versions.md.",
+  "upstream_compose": {
+    "_comment": "Stacks whose companion images (database, cache, queue) must match the project's own compose file for the app version we run.",
+    "photos": {
+      "docs": "https://docs.immich.app/install/upgrading/",
+      "app": {
+        "service": "immich-server",
+        "image": "ghcr.io/immich-app/immich-server"
+      },
+      "same_version": [
+        "immich-machine-learning"
+      ],
+      "urls": [
+        "https://raw.githubusercontent.com/immich-app/immich/{version}/docker/docker-compose.yml"
+      ],
+      "companions": {
+        "redis": "redis",
+        "database": "database"
+      },
+      "allow_drift": {
+        "redis": "Runs redis:6.2 (pinned by an older Immich release). Catch-up in docs/image-versions.md: move to the release compose's images, then upgrade to v3.",
+        "database": "Runs vectorchord0.3.0. Catch-up in docs/image-versions.md: move to the release compose's images, then upgrade to v3."
+      }
+    },
+    "security": {
+      "docs": "https://docs.goauthentik.io/install-config/upgrade/",
+      "app": {
+        "service": "server",
+        "image": "ghcr.io/goauthentik/server"
+      },
+      "same_version": [
+        "worker"
+      ],
+      "urls": [
+        "https://raw.githubusercontent.com/goauthentik/authentik/version/{version}/lifecycle/container/compose.yml",
+        "https://raw.githubusercontent.com/goauthentik/authentik/version/{version}/docker-compose.yml"
+      ],
+      "companions": {
+        "postgresql": "postgresql",
+        "redis": "redis"
+      }
+    },
+    "zulip": {
+      "docs": "https://github.com/zulip/docker-zulip",
+      "app": {
+        "service": "zulip",
+        "image": "ghcr.io/zulip/zulip-server"
+      },
+      "urls": [
+        "https://raw.githubusercontent.com/zulip/docker-zulip/ghcr-{version}/compose.yaml",
+        "https://raw.githubusercontent.com/zulip/docker-zulip/{version}/compose.yaml"
+      ],
+      "companions": {
+        "zulip-database": "database",
+        "zulip-memcached": "memcached",
+        "zulip-rabbitmq": "rabbitmq",
+        "zulip-redis": "redis"
+      }
+    }
+  },
+  "sequential": {
+    "_comment": "Images whose docs forbid skipping releases. A PR may move at most one release line. 'line' is a regex whose first group is the release line.",
+    "ghcr.io/goauthentik/server": {
+      "line": "^(\\d{4}\\.\\d+)\\.\\d+$",
+      "docs": "https://docs.goauthentik.io/install-config/upgrade/"
+    },
+    "nextcloud": {
+      "line": "^(\\d+)\\.\\d+\\.\\d+-apache$",
+      "docs": "https://github.com/nextcloud/docker#update-to-a-newer-version"
+    },
+    "mongo": {
+      "line": "^(\\d+)\\.\\d+\\.\\d+$",
+      "docs": "https://www.mongodb.com/docs/manual/release-notes/"
+    }
+  }
+}

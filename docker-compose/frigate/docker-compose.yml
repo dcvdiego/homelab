@@ -4,7 +4,7 @@ services:
   # Config lives at /docker/frigate/config/config.yml (seed it from ./config/config.yml in this repo)
   # Requires /dev/dri passed through to LXC 101 (Intel UHD 730 — shared with Jellyfin)
   frigate:
-    image: ghcr.io/blakeblackshear/frigate:stable
+    image: ghcr.io/blakeblackshear/frigate:0.18.0@sha256:9678a83a76e4730ac7d9ea7428370e32ae656d6b312aaad30d6c69f3fef14d35
     container_name: frigate
     privileged: true # this may not be necessary for all setups (official example)
     restart: unless-stopped

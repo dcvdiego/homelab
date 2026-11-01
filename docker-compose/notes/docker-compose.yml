@@ -1,7 +1,7 @@
 version: "2.1"
 services:
   couchdb:
-    image: couchdb
+    image: couchdb:3.5.1@sha256:ccea1e8035bf7afd68336e24056a1ca9c1c46d7abe42da686322c0ac7218e5c2
     container_name: obsidian-livesync
     user: 1000:1000
     environment:
@@ -21,7 +21,7 @@ services:
       # NOTE: Obsidian sync client — do NOT add forward auth
 
   vikunja:
-    image: vikunja/vikunja
+    image: vikunja/vikunja:2.3.0@sha256:f6b80393c1998cd5cd0dc38d24762c59ab4c10000a6f1032ef5b554e262cab93
     environment:
       VIKUNJA_SERVICE_PUBLICURL: https://tasks.${DOMAIN}
       VIKUNJA_DATABASE_HOST: db
@@ -44,7 +44,7 @@ services:
       # NOTE: Has mobile app — avoid forward auth. Use Vikunja's native auth.
 
   db:
-    image: mariadb:10
+    image: mariadb:10.11.17@sha256:8acd4a5561e8897cfc8a99480f25bcecb10b726fa17b1ec7381c6ef36fa00a79
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}

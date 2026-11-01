@@ -1,6 +1,6 @@
 services:
   socket-proxy:
-    image: tecnativa/docker-socket-proxy
+    image: tecnativa/docker-socket-proxy:v0.4.2@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
     container_name: traefik-socket-proxy
     restart: unless-stopped
     volumes:
@@ -15,7 +15,7 @@ services:
       - socket-proxy
 
   traefik:
-    image: traefik:v3
+    image: traefik:v3.6.13@sha256:34d5089d0b414945342848518b383f11f5b3a645504ed87b77ffeb9d683d0e48
     container_name: traefik
     restart: unless-stopped
     depends_on:
