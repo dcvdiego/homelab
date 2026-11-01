@@ -24,20 +24,20 @@ PVE 8 reached end of life on 2026-08-31. Plan checked against the official guide
 | `apt full-upgrade` on 8.4 (24 packages) | done, pve-manager 8.4.21 |
 | `non-free-firmware` on the Debian lines of `/etc/apt/sources.list`, `intel-microcode` installed | done; backup `sources.list.bak-2026-10-24`; microcode loads at next reboot |
 | Removable bootloader: `grub2/force_efi_extra_removable=true`, `apt install --reinstall grub-efi-amd64` | done; ESP backup `/root/esp-backup-2026-10-24.tar.gz`; boot entry 0000 `proxmox` (shim) first |
-| NIC pinning: `pve-network-interface-pinning generate` (enp4s0 → `nic0`) | generated, **pending until the next reboot** (see below) |
-| Fresh backups (all CTs to PBS + `pve-host-backup.service`) | **do right before Phase B** |
+| NIC pinning: `pve-network-interface-pinning generate` (enp4s0 → `nic0`) | applied at the 2026-11-01 reboot: `nic0` in `vmbr0` (see below) |
+| Fresh backups (all CTs to PBS + `pve-host-backup.service`) | done 2026-11-01, all OK: 100, 101, 104, 106, 201 to `pbs-lxc`; 105 to local `backups`; host config |
 
-#### Pending NIC rename (applies at the next reboot, planned or not)
+#### NIC rename (applied 2026-11-01)
 
 - `/usr/local/lib/systemd/network/50-pve-nic0.link`: matches the onboard NIC by MAC (only in that file, not here) → `nic0`.
-- `/etc/network/interfaces.new`: `enp4s0` → `nic0` in `iface` and `bridge-ports` of `vmbr0`; swapped in at boot.
+- `/etc/network/interfaces` uses `nic0` (`iface` and `bridge-ports` of `vmbr0`); `interfaces.new` was swapped in at boot.
 - Side effect: an empty `/etc/pve/sdn/controllers.cfg` (SDN unused).
-- **Don't** "Apply Configuration" in the web UI's Network panel or run `ifreload -a` before that
-  reboot: `nic0` doesn't exist until then, so the host would lose its network. "Revert" is safe.
-- Undo before rebooting: delete the `.link` file, `/etc/network/interfaces.new` and the empty
-  `controllers.cfg`. Backups: `/root/nic-pinning-backup-2026-10-24/`.
+- Undo: delete the `.link` file, put `enp4s0` back in `/etc/network/interfaces`, reboot.
+  Originals: `/root/nic-pinning-backup-2026-10-24/`.
 
-### Phase B: 8.4 → 9 (about 45–60 min downtime; needs physical console access)
+### Phase B: 8.4 → 9 (done 2026-11-01)
+
+The plan as written:
 
 1. Step 5 of Phase A: fresh backups. Re-run `pve8to9 --full` (expect only "running guests").
 2. Sources to trixie in deb822 format (`.sources`), keep the gierens repo; `apt update`. Review before continuing.
@@ -47,6 +47,25 @@ PVE 8 reached end of life on 2026-08-31. Plan checked against the official guide
 6. Reboot. Check: `nic0` exists and is in `vmbr0`, host reachable, kernel, ZFS module/tools match,
    all onboot containers up, USB (`/dev/ttyUSB0` Zigbee, `/dev/ttyACM0` Thread) and `/dev/dri` in
    CT 101/201, SMB on CT 100, `pvesm status` (pbs-lxc), Prometheus targets, Kuma green.
+
+Result after the reboot (checked 2026-11-01): pve-manager 9.2.24, Debian 13, kernel 7.0.14-26-pve,
+ZFS 2.4.4, both pools healthy, `pve8to9`: 0 warnings, 0 failures, `dpkg --audit` clean. `nic0` up in
+`vmbr0`; all 7 containers running; USB and `/dev/dri` present in CT 101/201; Samba active; PBS
+storage active.
+
+Follow-ups done the same day:
+- **Traefik came up with every `crowdsec@docker` route broken (404 on every site).** At boot it
+  timed out downloading the CrowdSec bouncer plugin from plugins.traefik.io, disabled plugins, and
+  the middleware never existed. `docker restart traefik` fixed it. This can happen at any host
+  reboot; open item: make the plugin load offline or start Traefik only once DNS/internet is up.
+- `pve-enterprise.sources` (added by the upgrade) got `Enabled: no`: no subscription, so `apt update`
+  failed with 401. Backup `/root/pve-enterprise.sources.bak-2026-11-01`.
+- Kept the local `lvm.conf` (only comments differ), `sshd_config` (explicit key-only root login) and
+  `/etc/issue` (Proxmox banner). The packages' versions are in `/root/phaseb-dpkg-dist/`.
+
+Still open: PBS in CT 105 runs 3.4.8 with 3.4.9 installed (Phase C restarts it); `openipmi.service`
+fails (no IPMI hardware, also before the upgrade); old 6.8 kernels (Phase D); commented bookworm
+`.list` files (`apt modernize-sources`, Phase D).
 
 ### Phase C: PBS 3 → 4 (CT 105, about 15 min, backups only)
 
@@ -63,7 +82,7 @@ snapshot mode (see [backups.md](backups.md)).
 
 If the host breaks, the agents box (CT 102) is down with it. Paste this into any assistant on a
 phone or laptop and run the commands at the host's console. It has no secrets and no MAC address.
-Update it when the setup changes (for example after Phase B: the "before" state becomes PVE 9).
+Update it when the setup changes.
 
 ````text
 You are helping me recover my Proxmox homelab server. I am at its physical console (keyboard
@@ -95,32 +114,29 @@ If apt says it will remove `proxmox-ve`, stop. That almost always means the repo
   backup id "pvehost". Database dumps are in /docker/db-dumps inside CT 101.
   The data and docker folders are also in Backblaze (cloud).
 
-## What changed recently (prep for the Proxmox VE 8.4 -> 9 upgrade, done 2026-10-24)
-Before this, the host was on PVE 8.4.21 (Debian 12 bookworm), kernel 6.8.12-43-pve.
-1. /etc/apt/sources.list: non-free-firmware added; intel-microcode installed.
-   Backup: /etc/apt/sources.list.bak-2026-10-24
-2. GRUB: debconf grub2/force_efi_extra_removable=true, grub-efi-amd64 reinstalled
-   (installs the fallback EFI bootloader too). ESP backup: /root/esp-backup-2026-10-24.tar.gz
-3. NIC name pinning (Proxmox's pve-network-interface-pinning tool): the onboard NIC, previously
-   "enp4s0", is renamed to "nic0" at boot by /usr/local/lib/systemd/network/50-pve-nic0.link
-   (matches by MAC address). /etc/network/interfaces.new uses nic0 (iface and vmbr0
-   bridge-ports); Proxmox moves it to /etc/network/interfaces at boot. An empty
-   /etc/pve/sdn/controllers.cfg was created. Backups of the originals:
-   /root/nic-pinning-backup-2026-10-24/
-   Undo: delete the .link file, put enp4s0 back in /etc/network/interfaces (and remove
-   interfaces.new if it is there), then reboot or `systemctl restart networking`.
-The planned upgrade (Phase B): sources switched to trixie in deb822 .sources files, all containers
-stopped, `apt dist-upgrade` with --force-confold, review the .dpkg-dist files, reboot.
-Guide: https://pve.proxmox.com/wiki/Upgrade_from_8_to_9
-My plan notes are in docs/proxmox.md in my GitHub repo (dcvdiego/homelab).
+## Current state and recent changes
+- Upgraded from PVE 8.4 to Proxmox VE 9.2.24 (Debian 13 trixie) on 2026-11-01. Running kernel
+  7.0.14-26-pve; the old 6.8.12-43-pve kernel is still installed as a fallback. ZFS 2.4.4.
+  Repositories: Debian in /etc/apt/sources.list (trixie), Proxmox no-subscription in
+  /etc/apt/sources.list.d/proxmox.sources, enterprise repo disabled (`Enabled: no`).
+- The onboard NIC is called "nic0" (was "enp4s0"), pinned by MAC in
+  /usr/local/lib/systemd/network/50-pve-nic0.link; vmbr0's bridge-ports is nic0.
+  Undo: delete the .link file, put enp4s0 back in /etc/network/interfaces, reboot.
+  Originals: /root/nic-pinning-backup-2026-10-24/
+- GRUB also maintains the fallback EFI bootloader (grub2/force_efi_extra_removable=true).
+  ESP backup: /root/esp-backup-2026-10-24.tar.gz
+- Known reboot issue: Traefik in CT 101 can start before the internet is reachable, fail to download
+  its CrowdSec plugin, and then return 404 for every website. Fix: `pct exec 101 -- docker restart traefik`.
+Guide used: https://pve.proxmox.com/wiki/Upgrade_from_8_to_9
+My notes are in docs/proxmox.md in my GitHub repo (dcvdiego/homelab).
 
 ## Likely problems, and where to start
 - Host boots but has no network: compare `ip -br link` and `ip -br addr` with
   /etc/network/interfaces. Either the NIC is still called enp4s0 while the config says nic0, or the
   other way round. Also check `bridge link` and `journalctl -b -u networking`.
-- Host doesn't boot: in the GRUB menu, try "Advanced options" with an older kernel (6.8.12-43-pve should
-  still be installed). Find out the boot setup: `proxmox-boot-tool status`, `efibootmgr -v`,
+- Host doesn't boot: in the GRUB menu, try "Advanced options" with the older kernel (6.8.12-43-pve). Find out the boot setup: `proxmox-boot-tool status`, `efibootmgr -v`,
   `findmnt /`. The Proxmox ISO has a rescue boot option.
+- After an update or reboot, every website shows 404: see the Traefik note above.
 - Upgrade interrupted or half-done: `dpkg --audit`, `dpkg --configure -a`, `apt -f install`.
   Check that every repository uses the same Debian release (no bookworm/trixie mix) before
   running `apt dist-upgrade` again.
