@@ -29,7 +29,8 @@ def call(method, path, body=None):
     req = urllib.request.Request(f"{API}{path}", method=method,
                                  data=json.dumps(body).encode() if body is not None else None,
                                  headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json",
-                                          "User-Agent": "homelab-post-comments"})
+                                          "User-Agent": "homelab-post-comments",
+                                          "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as r:
         data = r.read()
         return (json.loads(data) if data else None), r.headers.get("Link", "")
