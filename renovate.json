@@ -137,13 +137,13 @@
       "matchPackageNames": ["ghcr.io/immich-app/immich-server", "ghcr.io/immich-app/immich-machine-learning"],
       "groupName": "Immich",
       "groupSlug": "immich",
-      "prBodyNotes": ["**Immich**: read every release's notes for breaking changes, update the phone apps first on a major, back up first (Komodo pre-deploy does). Companion images are synced from the release compose by CI. Docs: https://docs.immich.app/install/upgrading/"]
+      "prBodyNotes": ["**Immich**: read every release's notes for breaking changes, update the phone apps first on a major, back up first (Komodo pre-deploy does). Companion images are synced from the release compose by CI. Docs: https://docs.immich.app/install/upgrading/", "**Vetted 2026-11-01 for v3:** first move redis/database to the v2.7.5 release compose images (valkey 9, vectorchord 0.4.3) in their own PR. Check the DB uses VectorChord (`\\dx` lists `vchord`): v3 drops pgvecto.rs. The env vars v3 removes aren't used here. Migration guide: https://immich.app/blog/v3-migration"]
     },
     {
       "matchPackageNames": ["ghcr.io/goauthentik/server"],
       "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
       "separateMultipleMinor": true,
-      "prBodyNotes": ["**authentik**: never skip a release line (2025.10 → 2025.12 → 2026.2 …); CI fails a PR that does. No downgrades: back up first (Komodo pre-deploy does). Docs: https://docs.goauthentik.io/install-config/upgrade/"]
+      "prBodyNotes": ["**authentik**: never skip a release line (2025.10 → 2025.12 → 2026.2 …); CI fails a PR that does. No downgrades: back up first (Komodo pre-deploy does). Docs: https://docs.goauthentik.io/install-config/upgrade/", "**Vetted 2026-11-01, manual steps on the way to 2026.x:** 2025.10 removes Redis (drop the `redis` service and `AUTHENTIK_REDIS__HOST` in that PR). 2025.12 moves file storage: stop the stack, `mv /docker/authentik/media /docker/authentik/data/media`, mount `/docker/authentik/data:/data` instead of `/media`. 2026.8 trusts forwarded headers only from `AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS` (the default private ranges cover Traefik)."]
     },
     {
       "matchPackageNames": ["nextcloud"],
@@ -193,11 +193,11 @@
     {
       "matchPackageNames": ["ghcr.io/zulip/zulip-server"],
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<patch>\\d+)$",
-      "prBodyNotes": ["**Zulip**: read the upgrade notes for every version in between; companion images are synced from docker-zulip's compose by CI. Docs: https://github.com/zulip/docker-zulip, https://zulip.readthedocs.io/en/latest/overview/changelog.html"]
+      "prBodyNotes": ["**Zulip**: read the upgrade notes for every version in between; companion images are synced from docker-zulip's compose by CI. Docs: https://github.com/zulip/docker-zulip, https://zulip.readthedocs.io/en/latest/overview/changelog.html", "**Vetted 2026-11-01 for 12.x:** this stack already uses the 12.x layout (ghcr image, Docker secrets, `CERTIFICATES`), so the legacy migration guide doesn't apply; follow https://github.com/zulip/docker-zulip/blob/main/docs/how-to/compose-upgrading.md"]
     },
     {
       "matchPackageNames": ["vabene1111/recipes"],
-      "prBodyNotes": ["**Tandoor**: database migrations can't be undone: read the release notes. Docs: https://docs.tandoor.dev/install/docker/"]
+      "prBodyNotes": ["**Tandoor**: database migrations can't be undone: read the release notes. Docs: https://docs.tandoor.dev/install/docker/", "**Vetted 2026-11-01:** 2.3.0 stops serving on gunicorn's port: change the Traefik label `loadbalancer.server.port=8080` to `80` in the same PR. 2.6.0: shared items need a household per group of users. 2.7.0 removed the `SOCIALACCOUNT_*` settings and the `api-token-auth/` endpoint."]
     },
     {
       "matchPackageNames": ["ghcr.io/open-webui/open-webui"],
@@ -231,7 +231,8 @@
     },
     {
       "matchPackageNames": ["bugattiguy527/termix"],
-      "versioning": "regex:^(release-)?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+      "versioning": "regex:^(release-)?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+      "prBodyNotes": ["**Termix**: 26.x needs a 2.9 install that has started once: go 1.x → 2.9.x (merge, let it start) → 26.x, never straight to 26."]
     },
     {"matchPackageNames": ["telegraf"], "sourceUrl": "https://github.com/influxdata/telegraf"},
     {"matchPackageNames": ["influxdb"], "sourceUrl": "https://github.com/influxdata/influxdb"},

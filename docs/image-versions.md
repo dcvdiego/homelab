@@ -9,8 +9,9 @@ written down here once per image, and from then on they're enforced by config in
 | `renovate.json` | Renovate opens the update PRs, with release notes, on Saturdays (3-day minimum release age). Non-critical minor/patch/digest updates come as one weekly batch PR; critical or breaking-prone images get one PR per update (label `review`); majors get `breaking`. Per-image notes from this page are added to the PR body. |
 | `scripts/image-policy.json` | What Renovate can't express: companion images that must match the app's upstream compose, and images that may not skip a release line. |
 | `scripts/upstream-compose.py` | On a Renovate PR for Immich, authentik or Zulip, CI rewrites the companion images to the ones in the project's compose file for the new version (`--fix`), and every Monday it reports drift as an issue. |
-| `scripts/check-images.py` | CI on every PR: fails if an image isn't pinned, uses a moving tag, has no row below, has no Renovate rule, or (for sequential images) skips a release line. |
+| `scripts/check-images.py` | CI on every PR: fails if an image isn't pinned, uses a moving tag, has no row below, has no Renovate rule, has no release-notes source, or (for sequential images) skips a release line. |
 | PR-Agent | On Renovate PRs, summarises breaking changes and manual steps from the release notes in the PR body. |
+| `scripts/release-notes.py` | Quotes each project's **official** upgrade notes for every release between what runs and the update (breaking changes, upgrade steps, deprecations, removals), as comments on the Renovate dashboard issue and on each PR that changes a version (workflow `release-notes`). Where to read them per image: `"release_notes"` in `scripts/image-policy.json`. Quotes, not summaries: the vetting is still a person's (or an agent's) job, against this repo's config. |
 | Komodo pre-deploy | Critical stacks back up their data before every deploy, and the deploy stops if the backup fails ([docs/backups.md](backups.md#pre-deploy-backups)). |
 
 Adding or changing an image: follow **AGENTS.md → Adding or updating a stack**.
