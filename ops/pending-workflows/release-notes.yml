@@ -1,0 +1,82 @@
+# Upgrade notes for image updates (docs/image-versions.md). GitHub-hosted runners, no secrets.
+#   dashboard  comments on the Renovate dashboard issue ("Renovate: image updates"): for every pending
+#              update, the breaking changes / upgrade steps / deprecations of every release between
+#              what runs and the update, quoted from the project's official notes
+#              (scripts/release-notes.py). Runs when Renovate edits the issue, daily, or by hand.
+#   pr         the same for a PR that changes image versions (Renovate's or a manual one)
+# main's copy of the scripts always runs; a PR's files are only read as data.
+# Undo: delete this file (and the bot comments it left, if wanted).
+name: release-notes
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    paths:
+      - "docker-compose/**"
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-notes-${{ github.event.pull_request.number || 'dashboard' }}
+  cancel-in-progress: true
+
+jobs:
+  dashboard:
+    if: >-
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.issue.user.login == 'renovate[bot]' &&
+       github.event.issue.title == 'Renovate: image updates')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Quote the upgrade notes on the dashboard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          num=$(gh issue list --state open --author app/renovate --search 'in:title "Renovate: image updates"' \
+                  --json number -q '.[0].number')
+          if [ -z "$num" ]; then echo "No open Renovate dashboard issue"; exit 0; fi
+          python3 scripts/release-notes.py --dashboard "$num" --out-dir digest
+          python3 scripts/post-comments.py "$num" digest
+
+  pr:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Quote the upgrade notes on the PR
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          python3 base/scripts/release-notes.py --root pr --base "$BASE_SHA" --out-dir digest
+          python3 base/scripts/post-comments.py "$PR" digest --skip-if "No version changes."

@@ -219,10 +219,11 @@ homelab/
 ├── ops/                   # agent access: Warpgate setup and notifier, PR request runner, request guide;
 │                          #   pending-workflows/: workflow changes for the owner to move into .github/
 ├── .github/workflows/     # apply.yml: applies approved PRs on the self-hosted runner; pr-agent.yml;
-│                          #   image-policy.yml (until the owner installs it from ops/pending-workflows/, its
-│                          #   checks don't run in CI: run scripts/check-images.py locally)
+│                          #   image-policy.yml; release-notes.yml (until the owner installs it from
+│                          #   ops/pending-workflows/, run scripts/release-notes.py locally)
 ├── scripts/               # helpers (Kuma monitors, Technitium, restore test, Warpgate) and the image policy
-│                          #   checks: check-images.py, upstream-compose.py, image-policy.json
+│                          #   checks: check-images.py, upstream-compose.py, image-policy.json; release-notes.py
+│                          #   (upgrade notes for pending updates) + post-comments.py
 ├── docs/                  # design notes: agent access, networking/DNS, agents box, Komodo migration
 └── terraform/             # Proxmox IaC (WIP)
 ```
@@ -288,6 +289,11 @@ Renovate PRs. The rules per image and why: [docs/image-versions.md](docs/image-v
    rule if its tags aren't plain semver (linuxserver `-lsN`, hotio `release-…`); `prBodyNotes` with
    the upgrade rules and docs link if it's review; and under `sequential` in
    `scripts/image-policy.json` if the docs forbid skipping releases.
+   **Release notes source:** add the image under `"release_notes"` in `scripts/image-policy.json`:
+   where the project publishes its upgrade notes (GitHub releases, a changelog file, a per-version
+   upgrade page; kinds in `scripts/release-notes.py`). Prefer the project's own upgrade or
+   breaking-changes page over a generic changelog. Check it with
+   `python3 scripts/release-notes.py --base origin/main` after bumping the tag locally.
 6. **Back up before deploys** if it holds data that matters: add the stack to
    `scripts/pre-deploy-backup.sh` and to the ops request that sets Komodo's pre-deploy command
    ([docs/backups.md](docs/backups.md#pre-deploy-backups)).
@@ -298,9 +304,13 @@ every version in between, follow the docs' upgrade path (never skip a release li
 so), keep companions matching the upstream compose for the new version, and update the row in
 `docs/image-versions.md` if the rule changed.
 
-**Reviewing a Renovate PR**: the PR body has the release notes and the image's rule; PR-Agent
-summarises breaking changes and manual steps. Merging deploys it (after the deployment approval); the
-pre-deploy backup runs first for critical stacks.
+**Reviewing (vetting) a Renovate PR or a dashboard entry**: the `release-notes` workflow comments the
+official upgrade notes of every release in between (also on the dashboard issue, before a PR exists);
+the PR body has the image's rule; PR-Agent summarises. Then check each quoted change **against this
+repo**: the compose file, its env names in `example.env`, Traefik labels (ports), volumes, and the
+docs row. Say per update: safe / needs a change in the same PR (and make it) / needs a manual step
+(write it down) / wait. Merging deploys it (after the deployment approval); the pre-deploy backup runs
+first for critical stacks.
 
 ## Traefik & Auth Patterns
 
