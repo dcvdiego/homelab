@@ -10,6 +10,10 @@ by the token's own bot (github-actions[bot]) are touched.
 
 --skip-if: when the first file contains this text and no comment exists yet, post nothing (a PR
 without version changes gets no comment). Needs GITHUB_TOKEN and GITHUB_REPOSITORY.
+
+Bodies quote upstream release notes, so every body is defanged before posting: @mentions, issue/PR
+references and issue/PR URLs outside code are wrapped in inline code. Otherwise GitHub notifies the
+people credited in those notes and adds "mentioned this" links to the upstream issues.
 """
 import argparse
 import json
@@ -23,6 +27,33 @@ API = "https://api.github.com"
 REPO = os.environ["GITHUB_REPOSITORY"]
 TOKEN = os.environ["GITHUB_TOKEN"]
 BOT = "github-actions[bot]"
+
+
+CODE = re.compile(r"(```.*?```|`[^`\n]*`)", re.S)
+GH_ISSUE_URL = r"https?://github\.com/[\w.-]+/[\w.-]+/(?:issues|pull|discussions)/\d+[^\s)\]>]*"
+PING = re.compile(
+    rf"\[([^\]\n]*)\]\(({GH_ISSUE_URL})\)"                  # [text](issue url)
+    rf"|<?({GH_ISSUE_URL})>?"                                  # bare issue url
+    r"|(?<![\w`/.@&-])([\w.-]+/[\w.-]+)?(#\d+)\b"             # owner/repo#N, #N
+    r"|(?<![\w`/.@-])(@[A-Za-z0-9][A-Za-z0-9-]*(?:/[\w.-]+)?)"  # @user, @org/team
+)
+
+
+def defang_text(text):
+    def sub(m):
+        if m.group(1) is not None:
+            ref = re.match(r"https?://github\.com/([\w.-]+/[\w.-]+)/\w+/(\d+)", m.group(2))
+            short = f"{ref.group(1)}#{ref.group(2)}"
+            text = defang_text(m.group(1))
+            return f"`{short}`" if text.strip("`") in (f"#{ref.group(2)}", short) else f"{text} (`{short}`)"
+        whole = m.group(3) or ((m.group(4) or "") + m.group(5) if m.group(5) else m.group(6))
+        return f"`{whole}`"
+    return PING.sub(sub, text)
+
+
+def defang(body):
+    """Wrap pings outside code in inline code; text already in code is left alone."""
+    return "".join(part if i % 2 else defang_text(part) for i, part in enumerate(CODE.split(body)))
 
 
 def call(method, path, body=None):
@@ -46,7 +77,7 @@ def main():
 
     marker = re.compile(rf"^<!-- {re.escape(args.prefix)}:(\d+) -->")
     files = sorted(pathlib.Path(args.dir).glob("*.md"), key=lambda p: int(p.stem))
-    bodies = {int(f.stem): f.read_text() for f in files}
+    bodies = {int(f.stem): defang(f.read_text()) for f in files}
 
     existing, page = {}, f"/repos/{REPO}/issues/{args.number}/comments?per_page=100"
     while page:
