@@ -1,8 +1,11 @@
-# Bedroom sleep mode: lift the guard at 09:30 instead of at sunrise (sun elevation > 4°).
-# In November that is ~07:35, while the room is still dark and someone is asleep, so the first
-# presence flicker turned the lights on (2026-11-05 08:31). Manual on (button/app) still disarms.
+# Bedroom sleep mode: lift the guard at 09:30 instead of at sunrise (sun elevation > 4°), and only
+# arm it between sunset and 09:30. Sunrise is ~07:35 in November, while the room is still dark and
+# someone is asleep, so the first presence flicker turned the lights on (2026-11-05 08:31). Arming had
+# no time condition, so a daytime light-off also blocked presence (2026-11-02 08:04). Manual on
+# (button/app) still disarms.
 # On docker-prod (CT 101): back up /docker/ha/automations.yaml, swap the sunrise trigger of
-# automation 1790104193270 for a 09:30 time trigger, check the YAML still parses in the HA container.
+# automation 1790104193270 for a 09:30 time trigger, add a sunset-to-09:30 condition to the arm
+# automation 1790104193269, check the YAML still parses in the HA container.
 # Idempotent: an already-changed file is left alone.
 # Takes effect after Developer Tools -> YAML -> Reload automations (the runner has no HA token).
 # Undo: pct exec 101 -- cp /docker/ha/automations.yaml.bak-20261105 /docker/ha/automations.yaml, then reload.
@@ -12,6 +15,25 @@ import shutil, subprocess, sys
 f = "/docker/ha/automations.yaml"
 bak = f + ".bak-20261105"
 edits = [
+    ("  description: Button press, app or Alexa leaves both bedroom lights off - someone is\n"
+     "    going to bed, block presence automation\n",
+     "  description: Button press, app or Alexa leaves both bedroom lights off between sunset\n"
+     "    and 09:30 - someone is going to bed, block presence automation\n"),
+    ("        entity_id: light.bedroom_kajplats_e14_bb_lamp\n"
+     "        state: 'off'\n"
+     "  actions:\n"
+     "  - wait_for_trigger:\n",
+     "        entity_id: light.bedroom_kajplats_e14_bb_lamp\n"
+     "        state: 'off'\n"
+     "  - condition: or\n"
+     "    conditions:\n"
+     "    - condition: state\n"
+     "      entity_id: sun.sun\n"
+     "      state: below_horizon\n"
+     "    - condition: time\n"
+     "      before: '09:30:00'\n"
+     "  actions:\n"
+     "  - wait_for_trigger:\n"),
     ("  alias: Bedroom sleep mode - disarm on manual on or sunrise\n",
      "  alias: Bedroom sleep mode - disarm on manual on or 09:30\n"),
     ("  description: Someone wants a light again (button/app/Alexa), or morning - lift the guard\n",
@@ -32,7 +54,7 @@ edits = [
 
 text = open(f).read()
 if all(new in text and old not in text for old, new in edits):
-    print("kept: already disarms at 09:30")
+    print("kept: already arms sunset-09:30 and disarms at 09:30")
     sys.exit(0)
 for old, new in edits:
     if text.count(old) != 1:
@@ -46,7 +68,7 @@ tmp = f + ".new"
 open(tmp, "w").write(text)
 check = subprocess.run(
     ["docker", "exec", "homeassistant", "python3", "-c",
-     "import yaml,sys; a=[x for x in yaml.safe_load(open('/config/automations.yaml.new')) if x['id']=='1790104193270'][0]; print(a['triggers'][-1]); print(a['conditions'][0]['conditions'][-1])"],
+     "import yaml,sys; d={x['id']: x for x in yaml.safe_load(open('/config/automations.yaml.new'))}; a=d['1790104193270']; print(a['triggers'][-1]); print(a['conditions'][0]['conditions'][-1]); print(d['1790104193269']['conditions'][-1])"],
     capture_output=True, text=True)
 if check.returncode != 0:
     print("error: new file does not parse, left unchanged\n" + check.stderr)
