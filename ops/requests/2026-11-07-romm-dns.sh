@@ -1,6 +1,9 @@
 # Follow-up to 2026-11-07-romm.sh (apply run 42413791771), which deployed RomM but failed on DNS:
-#   - Technitium docker-tower: romm.homelab.lan added; romm.$DOMAIN returned "error" (message not logged)
-#   - Technitium docker-prod: "invalid-token" for both records (TECHNITIUM_PROD_TOKEN is stale)
+#   - Technitium docker-tower: romm.homelab.lan added; romm.$DOMAIN rejected: the Komodo env has
+#     DOMAIN='...' in single quotes and the request kept them (Technitium log: "Invalid domain name
+#     ['<DOMAIN>']: invalid character [39]"). Same quoted name went to Cloudflare.
+#   - Technitium docker-prod: "invalid-token" for both records (the token in TECHNITIUM_PROD_TOKEN
+#     isn't accepted there; why is unknown)
 #   - Cloudflare: HTTPError. Not needed: the *.$DOMAIN tunnel wildcard already routes romm.$DOMAIN
 #     through Cloudflare Access (checked 2026-11-07: public 302 to Access, LAN Traefik 200), so this
 #     request leaves Cloudflare alone.
@@ -37,7 +40,7 @@ def komodo(kind, typ, params):
 ok = True
 def env_domain(stack):
     env = komodo("read", "GetStack", {"stack": stack})["config"].get("environment", "")
-    return next((l.split("=", 1)[1].strip().strip('"') for l in env.splitlines()
+    return next((l.split("=", 1)[1].strip().strip("'\"") for l in env.splitlines()
                  if l.strip().startswith("DOMAIN=")), "")
 
 # DOMAIN from the romm stack itself (2026-11-07-romm.sh copied it there), else from notes
