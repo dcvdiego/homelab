@@ -7,8 +7,9 @@
 # Differences from the reference: pinned images, named volumes replaced by host paths, no host port
 # (Traefik serves romm.${DOMAIN}), on network_default, secrets from the Komodo stack env.
 #
-# Library layout (Structure A, the docs' default): /data/romm/library/roms/<platform>/ and
-# /data/romm/library/bios/<platform>/. Platform folder names: https://docs.romm.app/latest/platforms/supported-platforms/
+# Library layout (Structure A, the docs' default): /data/roms/library/roms/<slug>/ and
+# /data/roms/library/bios/<slug>/, folders named with RomM's platform slugs (arcade, nds, psp, ...) so no
+# config.yml bindings are needed: https://docs.romm.app/latest/platforms/supported-platforms/
 services:
   romm:
     image: rommapp/romm:5.4.1@sha256:8677fb7b81b1d3db20b849e989a1dadc2a11159e51eb34a2acdcb01102274edf
@@ -35,7 +36,7 @@ services:
       - SCAN_WORKERS=4
       - WEB_SERVER_CONCURRENCY=4
     volumes:
-      - /data/romm/library:/romm/library     # ROM files (16TB HDD); back up separately, per the docs
+      - /data/roms/library:/romm/library     # ROM files (16TB HDD); back up separately, per the docs
       - /data/romm/resources:/romm/resources # covers/screenshots from metadata providers; re-downloadable
       - /docker/romm/assets:/romm/assets     # saves, states, uploads: critical (in /docker, so in PBS)
       - /docker/romm/config:/romm/config     # config.yml: critical
