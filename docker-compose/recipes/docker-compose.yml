@@ -4,7 +4,7 @@ services:
   # Main application service
   tandoor:
     container_name: tandoor
-    image: vabene1111/recipes:2.0.3@sha256:4388fa78422b8c5f32a61e169433989b2acc988af7db865baffa11ecdf4d5907
+    image: vabene1111/recipes:2.7.2@sha256:1b6d43c3c0f5d2888aa564d9daf29883212b79ad496f59f3c684c099eb1a57b9
     restart: unless-stopped
     volumes:
       - /data/recipes/staticfiles:/opt/recipes/staticfiles
@@ -24,7 +24,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.recipes.rule=Host(`recipes.${DOMAIN}`)"
       - "traefik.http.routers.recipes.entrypoints=websecure"
-      - "traefik.http.services.recipes.loadbalancer.server.port=8080"
+      - "traefik.http.services.recipes.loadbalancer.server.port=80"
       # To enable Authentik forward auth: - "traefik.http.routers.recipes.middlewares=authentik-forwardauth@docker"
 
   # PostgreSQL database service
