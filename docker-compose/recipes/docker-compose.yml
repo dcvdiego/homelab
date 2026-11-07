@@ -18,6 +18,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=djangodb
       - GUNICORN_WORKERS=2
+      # Required since 2.6.1 (GHSA-x636-4jx6-xc4w): without it every request is "400 Bad Request"
+      - ALLOWED_HOSTS=recipes.${DOMAIN}
     depends_on:
       - tandoor-db
     labels:
