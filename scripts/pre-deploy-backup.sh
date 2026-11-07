@@ -13,12 +13,15 @@
 # the vzdump/PBS jobs, so these also land in PBS.
 #   - Postgres: pg_dumpall inside the DB container (its own credentials, nothing on argv), checked for
 #     pg_dumpall's completion marker.
+#   - MariaDB: mariadb-dump --all-databases --single-transaction inside the DB container (root password
+#     from its own environment via MYSQL_PWD, not argv), checked for "-- Dump completed".
 #   - Files: a throwaway alpine container tars the bind-mounted host directory read-only.
 #   - Apps with live SQLite (Home Assistant, Vaultwarden, Frigate, Open WebUI) and Matter/Thread state
 #     are stopped for the copy so it's consistent, then started again (also if anything fails). Compose
 #     recreates them right after anyway when their image or config changed.
 #
-# Restore: Postgres `gzip -dc <file> | docker exec -i <container> psql -U <user> postgres`; files: stop
+# Restore: Postgres `gzip -dc <file> | docker exec -i <container> psql -U <user> postgres`; MariaDB
+# `gzip -dc <file> | docker exec -i <container> sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb -uroot'`; files: stop
 # the service, `tar xzf <file> -C <host dir>`, start it.
 # Undo: clear "Pre Deploy" on the stacks in Komodo; rm -r /etc/komodo/pre-deploy-backups.
 set -eu
@@ -64,6 +67,17 @@ pg() {
   if ! running "$c"; then log "skip $c: not running (first deploy?)"; return 0; fi
   docker exec "$c" sh -c 'pg_dumpall -U "$POSTGRES_USER"' | gzip > "$f"
   if ! gzip -dc "$f" | tail -n 5 | grep -q 'PostgreSQL database cluster dump complete'; then
+    log "FAIL $c: dump incomplete"; exit 1
+  fi
+  log "ok $c $(du -h "$f" | cut -f1)"
+}
+
+# mariadb <container>: mariadb-dump of every database as root, password from the container's env
+mariadb() {
+  c=$1 f="$OUT/$1.sql.gz"
+  if ! running "$c"; then log "skip $c: not running (first deploy?)"; return 0; fi
+  docker exec "$c" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb-dump -uroot --all-databases --single-transaction --routines --events' | gzip > "$f"
+  if ! gzip -dc "$f" | tail -n 1 | grep -q '^-- Dump completed'; then
     log "FAIL $c: dump incomplete"; exit 1
   fi
   log "ok $c $(du -h "$f" | cut -f1)"
@@ -125,6 +139,9 @@ case "$STACK" in
     pg zulip-database ;;
   recipes)
     pg tandoor-db ;;
+  notes)
+    mariadb notes-db-1
+    files vikunja-files /docker/vikunja/files ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;

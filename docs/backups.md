@@ -126,6 +126,7 @@ before `compose up`), so nothing is upgraded without a copy.
 | frigate | `/docker/frigate/config` (config.yml, frigate.db; without model_cache) | frigate |
 | nextcloud, zulip, recipes | `pg_dumpall` of the stack's Postgres | — |
 | open-webui | `/docker/open-webui` (without cache) | open-webui |
+| notes | `mariadb-dump` of `notes-db-1` (Vikunja); `/docker/vikunja/files` (attachments, avatars) | — |
 
 - Where: `/etc/komodo/pre-deploy-backups/<stack>/<timestamp>/` on the Docker host, newest 3 per stack.
   The host rootfs is in the vzdump jobs, so they reach PBS too. Sizes today: a few MB to ~900 MB
@@ -137,4 +138,5 @@ before `compose up`), so nothing is upgraded without a copy.
   read-only; Postgres dumps run inside the DB container with its own credentials.
 - Adding a stack: a `case` entry in the script, its name in the ops request (as a new request), and a row here.
 - Restore: Postgres `gzip -dc <file>.sql.gz | docker exec -i <container> psql -U <user> postgres`;
+  MariaDB `gzip -dc <file>.sql.gz | docker exec -i notes-db-1 sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb -uroot'`;
   files: stop the service, `tar xzf <file>.tar.gz -C <host dir>`, start it.
