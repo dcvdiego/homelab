@@ -1,0 +1,77 @@
+# RomM: ROM library manager (https://github.com/rommapp/romm), on docker-prod.
+# Based on the reference compose for 5.4.1 (examples/docker-compose.example.yml) and the install docs:
+#   https://docs.romm.app/latest/getting-started/quick-start/
+#   https://docs.romm.app/latest/install/databases/  (MariaDB 11, the recommended driver)
+#   https://docs.romm.app/latest/install/redis-or-valkey/  (embedded Valkey, persisted at /redis-data)
+#   https://docs.romm.app/latest/install/reverse-proxy/  (Traefik labels, ROMM_BASE_URL, secure cookies)
+# Differences from the reference: pinned images, named volumes replaced by host paths, no host port
+# (Traefik serves romm.${DOMAIN}), on network_default, secrets from the Komodo stack env.
+#
+# Library layout (Structure A, the docs' default): /data/romm/library/roms/<platform>/ and
+# /data/romm/library/bios/<platform>/. Platform folder names: https://docs.romm.app/latest/platforms/supported-platforms/
+services:
+  romm:
+    image: rommapp/romm:5.4.1@sha256:8677fb7b81b1d3db20b849e989a1dadc2a11159e51eb34a2acdcb01102274edf
+    container_name: romm
+    restart: unless-stopped
+    environment:
+      - ROMM_DB_DRIVER=mariadb
+      - DB_HOST=romm-db
+      - DB_NAME=romm
+      - DB_USER=romm-user
+      - DB_PASSWD=${ROMM_DB_PASSWORD}
+      - ROMM_AUTH_SECRET_KEY=${ROMM_AUTH_SECRET_KEY}
+      - ROMM_BASE_URL=https://romm.${DOMAIN}
+      - ROMM_SESSION_SECURE_COOKIE=true
+      # Metadata providers (https://docs.romm.app/latest/getting-started/metadata-providers/): fill
+      # in the ones you have accounts for in the Komodo stack env; empty ones are skipped.
+      - SCREENSCRAPER_USER=${SCREENSCRAPER_USER:-}
+      - SCREENSCRAPER_PASSWORD=${SCREENSCRAPER_PASSWORD:-}
+      - RETROACHIEVEMENTS_API_KEY=${RETROACHIEVEMENTS_API_KEY:-}
+      - STEAMGRIDDB_API_KEY=${STEAMGRIDDB_API_KEY:-}
+      - IGDB_CLIENT_ID=${IGDB_CLIENT_ID:-}
+      - IGDB_CLIENT_SECRET=${IGDB_CLIENT_SECRET:-}
+      - HASHEOUS_API_ENABLED=true
+      - SCAN_WORKERS=4
+      - WEB_SERVER_CONCURRENCY=4
+    volumes:
+      - /data/romm/library:/romm/library     # ROM files (16TB HDD); back up separately, per the docs
+      - /data/romm/resources:/romm/resources # covers/screenshots from metadata providers; re-downloadable
+      - /docker/romm/assets:/romm/assets     # saves, states, uploads: critical (in /docker, so in PBS)
+      - /docker/romm/config:/romm/config     # config.yml: critical
+      - /docker/romm/redis-data:/redis-data  # embedded Valkey (sessions, task queue)
+    depends_on:
+      romm-db:
+        condition: service_healthy
+        restart: true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.romm.rule=Host(`romm.${DOMAIN}`)"
+      - "traefik.http.routers.romm.entrypoints=websecure"
+      - "traefik.http.services.romm.loadbalancer.server.port=8080"
+      # NOTE: has companion/mobile apps and RetroArch WebDAV sync using RomM's own auth — do NOT add
+      # forward auth. SSO, if wanted, is RomM's native OIDC (docs: administration/oidc/authentik).
+
+  romm-db:
+    image: mariadb:11.8.9@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd
+    container_name: romm-db
+    restart: unless-stopped
+    environment:
+      - MARIADB_ROOT_PASSWORD=${ROMM_DB_ROOT_PASSWORD}
+      - MARIADB_DATABASE=romm
+      - MARIADB_USER=romm-user
+      - MARIADB_PASSWORD=${ROMM_DB_PASSWORD}
+    volumes:
+      - /docker/romm/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 30s
+      start_interval: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+    name: network_default
+    external: true

@@ -21,7 +21,7 @@
 #     recreates them right after anyway when their image or config changed.
 #
 # Restore: Postgres `gzip -dc <file> | docker exec -i <container> psql -U <user> postgres`; MariaDB
-# `gzip -dc <file> | docker exec -i <container> sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb -uroot'`; files: stop
+# `gzip -dc <file> | docker exec -i <container> sh -c 'MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" mariadb -uroot'`; files: stop
 # the service, `tar xzf <file> -C <host dir>`, start it.
 # Undo: clear "Pre Deploy" on the stacks in Komodo; rm -r /etc/komodo/pre-deploy-backups.
 set -eu
@@ -73,10 +73,11 @@ pg() {
 }
 
 # mariadb <container>: mariadb-dump of every database as root, password from the container's env
+# (MARIADB_ROOT_PASSWORD, or the older MYSQL_ROOT_PASSWORD name)
 mariadb() {
   c=$1 f="$OUT/$1.sql.gz"
   if ! running "$c"; then log "skip $c: not running (first deploy?)"; return 0; fi
-  docker exec "$c" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb-dump -uroot --all-databases --single-transaction --routines --events' | gzip > "$f"
+  docker exec "$c" sh -c 'MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" exec mariadb-dump -uroot --all-databases --single-transaction --routines --events' | gzip > "$f"
   if ! gzip -dc "$f" | tail -n 1 | grep -q '^-- Dump completed'; then
     log "FAIL $c: dump incomplete"; exit 1
   fi
@@ -144,6 +145,14 @@ case "$STACK" in
     stop notes-vikunja-1
     mariadb notes-db-1
     files vikunja-files /docker/vikunja/files ;;
+  romm)
+    # What RomM's backup docs call critical: the DB, /romm/assets (saves, states), /romm/config.
+    # The ROM library and re-downloadable resources (/data/romm) are not copied. RomM is stopped so
+    # the dump and the saves/states in assets match (same as Vikunja above).
+    stop romm
+    mariadb romm-db
+    files romm-assets /docker/romm/assets
+    files romm-config /docker/romm/config ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;

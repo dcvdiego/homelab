@@ -102,6 +102,10 @@
         icon: qbittorrent
         href: http://192.168.1.224:8282
         description: qBittorrent (via Blackhole)
+    - RomM:
+        icon: romm
+        href: https://romm.{{HOMEPAGE_VAR_DOMAIN}}
+        description: Retro game library
 
 - Passwords:
     - Vaultwarden:

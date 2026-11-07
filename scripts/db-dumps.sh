@@ -59,12 +59,14 @@ for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database strapiDB; 
   finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'PostgreSQL database cluster dump complete' 5
 done
 
-# MariaDB (notes stack): password passed via MYSQL_PWD inside the container, not on argv.
-c=notes-db-1
-f="$OUT/$c-$STAMP.sql.gz"
-docker exec "$c" sh -c 'D=$(command -v mariadb-dump || command -v mysqldump); MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$D" -uroot --all-databases --single-transaction --routines --events' \
-  2>>"$OUT/.errors.log" | gzip > "$f.tmp"
-finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'Dump completed' 5
+# MariaDB (notes: Vikunja, romm: RomM): password passed via MYSQL_PWD inside the container, not on
+# argv. The root password env var is MARIADB_ROOT_PASSWORD (romm) or the older MYSQL_ROOT_PASSWORD (notes).
+for c in notes-db-1 romm-db; do
+  f="$OUT/$c-$STAMP.sql.gz"
+  docker exec "$c" sh -c 'D=$(command -v mariadb-dump || command -v mysqldump); MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" "$D" -uroot --all-databases --single-transaction --routines --events' \
+    2>>"$OUT/.errors.log" | gzip > "$f.tmp"
+  finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'Dump completed' 5
+done
 
 # CouchDB (Obsidian LiveSync): every database as JSON (_all_docs with docs and attachments).
 # The object's closing brace is written alone on the last line, only after every database was

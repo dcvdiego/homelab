@@ -89,6 +89,7 @@
         "vabene1111/recipes",
         "ghcr.io/open-webui/open-webui",
         "vikunja/vikunja",
+        "rommapp/romm",
         "technitium/dns-server",
         "cloudflare/cloudflared",
         "traefik",
@@ -198,6 +199,11 @@
     {
       "matchPackageNames": ["vabene1111/recipes"],
       "prBodyNotes": ["**Tandoor**: database migrations can't be undone: read the release notes. Docs: https://docs.tandoor.dev/install/docker/", "**Vetted 2026-11-01:** 2.3.0 stops serving on gunicorn's port: change the Traefik label `loadbalancer.server.port=8080` to `80` in the same PR. 2.6.0: shared items need a household per group of users. 2.7.0 removed the `SOCIALACCOUNT_*` settings and the `api-token-auth/` endpoint."]
+    },
+    {
+      "matchPackageNames": ["rommapp/romm"],
+      "sourceUrl": "https://github.com/rommapp/romm",
+      "prBodyNotes": ["**RomM**: database migrations run at startup; read the release notes for env or volume changes. The DB, /romm/assets and /romm/config are backed up by the Komodo pre-deploy. Docs: https://docs.romm.app/latest/install/backup-and-restore/"]
     },
     {
       "matchPackageNames": ["ghcr.io/open-webui/open-webui"],

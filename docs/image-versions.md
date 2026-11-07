@@ -53,7 +53,8 @@ Kinds:
 | `ghcr.io/open-webui/open-webui` | open-webui | review | Pin `vX.Y.Z` (never `:main`), read release notes, back up before every update. | [updating](https://docs.openwebui.com/getting-started/updating) |
 | `ollama/ollama` | open-webui | batch | Versioned tags. | [Docker Hub](https://hub.docker.com/r/ollama/ollama) |
 | `vikunja/vikunja` | notes | review | Examples untagged; changelog lists breaking changes. | [docker example](https://vikunja.io/docs/full-docker-example/), [changelog](https://vikunja.io/changelog) |
-| `mariadb` | notes | db | Vikunja's example uses `mariadb:10`; 10.11 is the LTS line. | [docker example](https://vikunja.io/docs/full-docker-example/) |
+| `mariadb` | notes, romm | db | Vikunja's example uses `mariadb:10`; 10.11 is the LTS line. RomM's database docs use `mariadb:11` (needs ≥ 10.11); pinned to the 11.8 LTS line. | [docker example](https://vikunja.io/docs/full-docker-example/), [RomM databases](https://docs.romm.app/latest/install/databases/) |
+| `rommapp/romm` | romm | review | Reference compose uses `latest`; versioned tags `X.Y.Z` (full image, `-slim` without in-browser players) are published. Migrations run at startup; back up the DB, `/romm/assets` and `/romm/config` before updating. | [quick start](https://docs.romm.app/latest/getting-started/quick-start/), [image variants](https://docs.romm.app/latest/install/image-variants/), [backup](https://docs.romm.app/latest/install/backup-and-restore/) |
 | `couchdb` | notes | db | Obsidian LiveSync needs CouchDB 3.x. | [Docker Hub](https://hub.docker.com/_/couchdb) |
 | `technitium/dns-server` | network | review | Docs show `latest`; versioned tags published. DNS for the LAN: read the changelog. | [Docker Hub](https://hub.docker.com/r/technitium/dns-server) |
 | `cloudflare/cloudflared` | network | review | Calendar-versioned tags; keep within Cloudflare's supported window (about a year). | [Docker Hub](https://hub.docker.com/r/cloudflare/cloudflared) |
