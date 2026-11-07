@@ -98,7 +98,7 @@ ntfy runs on docker-prod (`docker-compose/ntfy`), topic `homelab`, `auth-default
 `scripts/db-dumps.sh` (installed at `/docker/scripts/db-dumps.sh` in CT 101, root-only):
 
 - Postgres (`security-postgresql-1`, `tandoor-db`, `nextcloud-db`, `zulip-database`, `strapiDB`):
-  `pg_dumpall` inside each container. MariaDB (`notes-db-1`): `mariadb-dump --all-databases
+  `pg_dumpall` inside each container. MariaDB (`notes-db-1`, `romm-db`): `mariadb-dump --all-databases
   --single-transaction`. CouchDB (`obsidian-livesync`): `_all_docs?include_docs=true&attachments=true` per DB.
 - Credentials come from each container's own environment, inside the container.
 - A dump counts only if it is valid gzip, non-empty and ends with the tool's completion marker.
@@ -127,6 +127,7 @@ before `compose up`), so nothing is upgraded without a copy.
 | nextcloud, zulip, recipes | `pg_dumpall` of the stack's Postgres | — |
 | open-webui | `/docker/open-webui` (without cache) | open-webui |
 | notes | `mariadb-dump` of `notes-db-1` (Vikunja); `/docker/vikunja/files` (attachments, avatars) | notes-vikunja-1 |
+| romm | `mariadb-dump` of `romm-db`; `/docker/romm/assets` (saves, states, uploads), `/docker/romm/config`. Not the ROM library or `/data/romm/resources` (RomM's docs: back the library up separately; resources re-download on a rescan) | romm |
 
 - Where: `/etc/komodo/pre-deploy-backups/<stack>/<timestamp>/` on the Docker host, newest 3 per stack.
   The host rootfs is in the vzdump jobs, so they reach PBS too. Sizes today: a few MB to ~900 MB

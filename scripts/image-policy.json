@@ -149,6 +149,9 @@
     "zulip/zulip-postgresql": {
       "link": "https://github.com/zulip/docker-zulip#upgrading-zulip-postgresql"
     },
+    "rommapp/romm": {
+      "github": "rommapp/romm"
+    },
     "vikunja/vikunja": {
       "changelog": "https://raw.githubusercontent.com/go-vikunja/vikunja/main/CHANGELOG.md",
       "section": "^## \\[",

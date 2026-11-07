@@ -71,6 +71,7 @@ MONITORS = [
     {"name": "Readarr",          "url": "http://readarr:8787",             "parent_name": "Media"},
     {"name": "Navidrome",        "url": "http://deezer-navidrome-1:4533",             "parent_name": "Media"},
     {"name": "Deemix",           "url": "http://deemix:6595",             "parent_name": "Media"},
+    {"name": "RomM",             "url": "http://romm:8080/api/heartbeat",             "parent_name": "Media"},
     # --- Apps ---
     {"name": "Immich",           "url": "http://immich_server:2283/api/server/ping",             "parent_name": "Apps"},
     {"name": "Vaultwarden",      "url": "http://vaultwarden:80/alive",             "parent_name": "Apps"},
