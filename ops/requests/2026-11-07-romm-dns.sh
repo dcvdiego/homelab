@@ -22,35 +22,44 @@ def call(url, data=None, headers=None, method=None):
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read() or "null")
 
+def technitium(ip, path, params):
+    """Technitium API call. Its token is in the query string, so errors print the class only."""
+    try:
+        return call(f"http://{ip}:5380/api/{path}?{urllib.parse.urlencode(params)}")
+    except Exception as e:
+        return {"status": "request-failed", "errorMessage": e.__class__.__name__}
+
 def komodo(kind, typ, params):
     return call(f"{os.environ['KOMODO_URL']}/{kind}/{typ}", json.dumps(params).encode(),
                 {"Content-Type": "application/json", "x-api-key": os.environ["KOMODO_API_KEY"],
                  "x-api-secret": os.environ["KOMODO_API_SECRET"]}, "POST")
 
 ok = True
-env = komodo("read", "GetStack", {"stack": "notes"})["config"].get("environment", "")
-domain = next((l.split("=", 1)[1].strip().strip('"') for l in env.splitlines()
-               if l.strip().startswith("DOMAIN=")), "")
+def env_domain(stack):
+    env = komodo("read", "GetStack", {"stack": stack})["config"].get("environment", "")
+    return next((l.split("=", 1)[1].strip().strip('"') for l in env.splitlines()
+                 if l.strip().startswith("DOMAIN=")), "")
+
+# DOMAIN from the romm stack itself (2026-11-07-romm.sh copied it there), else from notes
+domain = env_domain("romm") or env_domain("notes")
 if not domain:
-    sys.exit("DOMAIN not found in the notes stack env; nothing changed")
+    sys.exit("DOMAIN not found in the romm or notes stack env; nothing changed")
 mask = lambda s: str(s).replace(domain, "<DOMAIN>")
 
 print("== 1. Technitium")
 for ip, var in (("192.168.1.248", "TECHNITIUM_TOWER_TOKEN"), ("192.168.1.224", "TECHNITIUM_PROD_TOKEN")):
     tok = os.environ.get(var, "")
-    try:
-        zones = call(f"http://{ip}:5380/api/zones/list?{urllib.parse.urlencode({'token': tok})}")
-    except Exception as e:
-        print(f"{ip}: unreachable ({e.__class__.__name__})"); ok = False; continue
+    zones = technitium(ip, "zones/list", {"token": tok})
+    if zones.get("status") == "request-failed":
+        print(f"{ip}: unreachable ({zones['errorMessage']})"); ok = False; continue
     if zones.get("status") != "ok":
         print(f"{ip}: {zones.get('status')}: {var} doesn't work; rotate it (Technitium -> Administration -> Sessions -> Create Token) and update the GitHub secret")
         ok = False; continue
     ztype = {z["name"]: z.get("type") for z in zones["response"]["zones"]}
     print(f"{ip}: zones homelab.lan={ztype.get('homelab.lan')}, <DOMAIN>={ztype.get(domain)}")
     for zone, name in (("homelab.lan", "romm.homelab.lan"), (domain, f"romm.{domain}")):
-        q = urllib.parse.urlencode({"token": tok, "zone": zone, "domain": name, "type": "A",
-                                    "ipAddress": "192.168.1.224", "ttl": 3600, "overwrite": "true"})
-        r = call(f"http://{ip}:5380/api/zones/records/add?{q}")
+        r = technitium(ip, "zones/records/add", {"token": tok, "zone": zone, "domain": name, "type": "A",
+                                                  "ipAddress": "192.168.1.224", "ttl": 3600, "overwrite": "true"})
         msg = "" if r.get("status") == "ok" else f" ({mask(r.get('errorMessage', ''))})"
         print(f"{ip}: {mask(name)} -> 192.168.1.224: {r.get('status')}{msg}")
         ok &= r.get("status") == "ok"
@@ -74,10 +83,16 @@ if cur == want:
 elif cur:
     print("pre_deploy: SKIPPED, another command is set (left as is)")
 else:
+    # UpdateStack takes a partial config and merges it (same call as 2026-11-07-vikunja-backup-komodo-diff.sh);
+    # the read-back also checks that the env and run directory are still there.
     komodo("write", "UpdateStack", {"id": sid, "config": {"pre_deploy": {"path": "", "command": want}}})
-    got = (komodo("read", "GetStack", {"stack": "romm"})["config"].get("pre_deploy") or {}).get("command", "")
-    print("pre_deploy: set" if got.strip() == want else f"pre_deploy: FAILED (reads back as {got!r})")
-    ok &= got.strip() == want
+    after = komodo("read", "GetStack", {"stack": "romm"})["config"]
+    got = (after.get("pre_deploy") or {}).get("command", "").strip()
+    kept = (after.get("run_directory") == cfg.get("run_directory")
+            and after.get("environment", "") == cfg.get("environment", ""))
+    print("pre_deploy: set" if got == want else f"pre_deploy: FAILED (reads back as {got!r})")
+    print("rest of the config: unchanged" if kept else "rest of the config: CHANGED (check the stack in Komodo)")
+    ok &= got == want and kept
 sys.exit(0 if ok else 1)
 PY
 exit $rc
