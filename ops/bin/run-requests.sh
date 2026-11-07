@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the ops requests added in this push (or the one named in a manual re-run).
+# Runs the ops requests added since the last applied run (or the one named in a manual re-run).
 # Output goes to /results/<run id>/<request>.log (/docker/ops/results on docker-tower), never to the
 # public job log.
 set -euo pipefail
@@ -8,7 +8,8 @@ if [ -n "${REQUEST:-}" ]; then
   [[ "$REQUEST" =~ ^ops/requests/[A-Za-z0-9._-]+\.sh$ && -f "$REQUEST" ]] || {
     echo "::error::request must be an existing ops/requests/<name>.sh"; exit 1; }
   requests=("$REQUEST")
-elif [ -n "${BEFORE:-}" ] && [[ ! "$BEFORE" =~ ^0+$ ]]; then
+elif BEFORE=$(python3 "$(dirname "$0")/apply-base.py") && [ -n "$BEFORE" ] && [[ ! "$BEFORE" =~ ^0+$ ]]; then
+  # since the last applied run, so requests merged in a cancelled run still run (apply-base.py)
   mapfile -t requests < <(git diff --diff-filter=A --name-only "$BEFORE" "$GITHUB_SHA" -- 'ops/requests/*.sh')
   git diff --diff-filter=M --name-only "$BEFORE" "$GITHUB_SHA" -- 'ops/requests/*.sh' |
     sed 's/^/::warning::edited, not re-run (add a new request instead): /'
