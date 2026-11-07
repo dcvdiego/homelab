@@ -37,11 +37,19 @@ out=/etc/komodo/pre-deploy-backups/komodo/$(date +%Y%m%d-%H%M%S)
 mkdir -p "$out"; chmod 700 /etc/komodo/pre-deploy-backups
 # Credentials from the mongo container's own env; nothing printed
 docker exec komodo-mongo-1 sh -c 'exec mongodump --quiet --archive --gzip -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin' > "$out/komodo-mongo.archive.gz"
-[ -s "$out/komodo-mongo.archive.gz" ] && gzip -t "$out/komodo-mongo.archive.gz"
+# Explicit checks: under set -e, a failing left side of `&&` would not stop the script
+[ -s "$out/komodo-mongo.archive.gz" ] || { echo "backup is empty; nothing deployed"; exit 1; }
+gzip -t "$out/komodo-mongo.archive.gz" || { echo "backup is not valid gzip; nothing deployed"; exit 1; }
 echo "backup: $out ($(du -h "$out/komodo-mongo.archive.gz" | cut -f1))"
 cp docker-compose.yml docker-compose.yml.bak
 mv /root/komodo-core.yml docker-compose.yml
-docker compose -p komodo --env-file compose.env up -d 2>&1 | tail -n 6
+# No pipe, so compose's own exit status counts (sh has no pipefail)
+if docker compose -p komodo --env-file compose.env up -d > /tmp/komodo-up.log 2>&1; then
+  tail -n 6 /tmp/komodo-up.log; rm -f /tmp/komodo-up.log
+else
+  tail -n 20 /tmp/komodo-up.log; rm -f /tmp/komodo-up.log
+  echo "compose up failed; previous file is docker-compose.yml.bak"; exit 1
+fi
 STEP
 PVE 'cat > /root/komodo-core.yml' < "$REPO_FILE"
 PVE 'cat > /root/komodo-core-step.sh' < /tmp/komodo-core-step.sh
