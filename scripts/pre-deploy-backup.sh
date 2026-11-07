@@ -140,6 +140,8 @@ case "$STACK" in
   recipes)
     pg tandoor-db ;;
   notes)
+    # Vikunja stopped so the dump and its attachment files match (a few seconds; the deploy restarts it anyway)
+    stop notes-vikunja-1
     mariadb notes-db-1
     files vikunja-files /docker/vikunja/files ;;
   open-webui)

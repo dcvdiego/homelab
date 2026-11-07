@@ -126,7 +126,7 @@ before `compose up`), so nothing is upgraded without a copy.
 | frigate | `/docker/frigate/config` (config.yml, frigate.db; without model_cache) | frigate |
 | nextcloud, zulip, recipes | `pg_dumpall` of the stack's Postgres | — |
 | open-webui | `/docker/open-webui` (without cache) | open-webui |
-| notes | `mariadb-dump` of `notes-db-1` (Vikunja); `/docker/vikunja/files` (attachments, avatars) | — |
+| notes | `mariadb-dump` of `notes-db-1` (Vikunja); `/docker/vikunja/files` (attachments, avatars) | notes-vikunja-1 |
 
 - Where: `/etc/komodo/pre-deploy-backups/<stack>/<timestamp>/` on the Docker host, newest 3 per stack.
   The host rootfs is in the vzdump jobs, so they reach PBS too. Sizes today: a few MB to ~900 MB
