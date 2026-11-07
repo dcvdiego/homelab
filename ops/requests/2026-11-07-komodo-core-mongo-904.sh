@@ -15,7 +15,9 @@
 #   docker compose -p komodo --env-file compose.env up -d` (MongoDB 9.0.4 data opens fine on 9.0.2:
 #   same featureCompatibilityVersion). Dump restore: `docker exec -i komodo-mongo-1 sh -c 'mongorestore
 #   --drop --archive --gzip -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD"' < <file>`.
-set -u
+# Same mode the runner uses (ops/bin/run-requests.sh: bash -euo pipefail), stated here so any failed
+# step stops the request.
+set -euo pipefail
 PVE() { ssh -F "$OPS_SSH_CONFIG" pve "$@"; }
 REPO_FILE=docker-compose/komodo/docker-compose.yml
 DIR=/etc/komodo/core
@@ -24,7 +26,7 @@ grep -q 'image: mongo:9.0.4@' "$REPO_FILE" || { echo "repo file isn't on mongo 9
 
 echo "== host file vs repo: only image lines may differ"
 PVE "pct exec 104 -- cat $DIR/docker-compose.yml" > /tmp/komodo-core-host.yml
-other=$(diff <(grep -v '^\s*image:' "$REPO_FILE") <(grep -v '^\s*image:' /tmp/komodo-core-host.yml) | wc -l)
+other=$({ diff <(grep -v '^\s*image:' "$REPO_FILE") <(grep -v '^\s*image:' /tmp/komodo-core-host.yml) || true; } | wc -l)
 rm -f /tmp/komodo-core-host.yml
 if [ "$other" -ne 0 ]; then echo "host file has other changes ($other diff lines); nothing done"; exit 1; fi
 echo "ok"
@@ -61,15 +63,15 @@ PVE 'pct push 104 /root/komodo-core.yml /root/komodo-core.yml && pct push 104 /r
      exit $r'
 
 echo "== check"
+up=false
 for i in $(seq 1 30); do
   if curl -fsS -m 5 -o /dev/null -X POST -H 'Content-Type: application/json' \
        -H "x-api-key: $KOMODO_API_KEY" -H "x-api-secret: $KOMODO_API_SECRET" \
        -d '{}' "$KOMODO_URL/read/GetVersion"; then
-    echo "Core answers after ~$((i * 5))s"; break
+    echo "Core answers after ~$((i * 5))s"; up=true; break
   fi
   sleep 5
 done
 PVE 'pct exec 104 -- docker ps --filter name=komodo --format "{{.Names}} {{.Image}} {{.Status}}"'
 PVE 'pct exec 104 -- docker logs komodo-mongo-1' 2>&1 | grep -o 'buildInfo":{"version":"[0-9.]*' | tail -n 1 || echo "(mongo version not in log yet)"
-curl -fsS -m 5 -o /dev/null -X POST -H 'Content-Type: application/json' \
-  -H "x-api-key: $KOMODO_API_KEY" -H "x-api-secret: $KOMODO_API_SECRET" -d '{}' "$KOMODO_URL/read/GetVersion"
+$up || { echo "Core didn't answer within 150s; previous file is /etc/komodo/core/docker-compose.yml.bak"; exit 1; }
