@@ -29,7 +29,7 @@ services:
       VIKUNJA_DATABASE_TYPE: mysql
       VIKUNJA_DATABASE_USER: vikunja
       VIKUNJA_DATABASE_DATABASE: vikunja
-      VIKUNJA_SERVICE_JWTSECRET: ${VIKUNJA_JWT_SECRET}
+      VIKUNJA_SERVICE_SECRET: ${VIKUNJA_JWT_SECRET}  # service.jwtsecret is deprecated; same value
     volumes:
       - /docker/vikunja/files:/app/vikunja/files
     depends_on:
