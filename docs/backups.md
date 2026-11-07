@@ -17,6 +17,11 @@ How the homelab is backed up, and where each piece is configured. Set up 2026-10
 
 - Guest disks are `.raw` files on `dir` storage, which can't snapshot, so vzdump falls back to **suspend**
   mode: rsync to a temp dir, pause, final rsync. docker-prod pauses about 3 minutes.
+- The pause breaks Zigbee: on 2026-11-07 CT 101 was paused 127 s; on resume the USB adapter hit
+  `ASH_NCP_FATAL_ERROR` and Zigbee2MQTT hung with its container still "Up" (presence automations dead
+  for 14 h until `docker restart zigbee2mqtt`). Monitor "Zigbee2MQTT (push)" now alerts on that.
+- CT 100 and CT 101 both mount `vm-100-disk-0.raw` (`/data`) and `vm-100-disk-1.raw` (`/docker`).
+  Checked 2026-11-07: both use the same loop devices, so each filesystem is mounted once (safe).
 - Temp dir: `tmpdir: /vault/vzdump-tmp` in `/etc/vzdump.conf` (the 80G root disk is too small for
   CT 101). The `vault/vzdump-tmp` dataset needs `acltype=posix xattr=sa`, otherwise rsync fails on
   journal ACLs (exit 23).
