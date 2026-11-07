@@ -21,7 +21,7 @@ services:
       # NOTE: Obsidian sync client — do NOT add forward auth
 
   vikunja:
-    image: vikunja/vikunja:2.3.0@sha256:f6b80393c1998cd5cd0dc38d24762c59ab4c10000a6f1032ef5b554e262cab93
+    image: vikunja/vikunja:2.7.1@sha256:f7dc8428d10aef17f3075886d3c1c022f566ec456f88985f02c137f4fc534576
     environment:
       VIKUNJA_SERVICE_PUBLICURL: https://tasks.${DOMAIN}
       VIKUNJA_DATABASE_HOST: db
