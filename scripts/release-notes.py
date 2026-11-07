@@ -47,7 +47,7 @@ PRE = re.compile(r"(?i)alpha|beta|\brc|-rc|\.rc|dev\b|nightly|preview|\d+b\d+$")
 BREAK = re.compile(r"(?i)breaking|backward[- ]?incompatible|upgrade notes|migrat|deprecat|"
                    r"remov|important|action required|before (?:you )?upgrad|known issues|attention|caution|"
                    r"\bnotes? for\b|must read")
-# Single bullets worth quoting outside such a section. Not "fixed X breaking Y" or "removed unused code":
+# Single bullets or paragraphs worth quoting outside such a section. Not "fixed X breaking Y" or "removed unused code":
 # those are bug fixes and cleanups, the full notes are one click away.
 BREAK_LINE = re.compile(r"(?i)\bbreaking[ -]changes?\b|⚠|\[CHANGE\]|backward[- ]?incompatible|"
                         r"no longer (?:supported|works?|available|possible)|\bdeprecated\b|"
@@ -136,6 +136,8 @@ def extract(text, everything=False):
     text = re.sub(r"<!--.*?-->", "", text or "", flags=re.S).strip()
     text = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S)  # docs front matter
     text = re.sub(r"^\s*\{\{[<%].*?[>%]\}\}\s*$", "", text, flags=re.M)  # docs-site shortcodes
+    text = re.sub(r'\{%\s*term\s+"([^"]*)"(?:\s+"([^"]*)")?\s*%\}',
+                  lambda m: m.group(2) or m.group(1), text)  # HA glossary tags: {% term "x" "plural" %}
     if not text.strip():
         return ""
     if everything:
@@ -162,17 +164,44 @@ def extract(text, everything=False):
             continue
         keep.append(ha_details(section) or section)
         used.update(range(i, end))
+    fence = False
     for i, line in enumerate(lines):
-        if i in used or not (BREAK_LINE.search(line) or BREAK_WORD.search(line)) or not BULLET.match(line) \
-                or TOC.match(line):
+        if line.lstrip().startswith("```"):
+            fence = not fence
             continue
-        # the whole bullet: its wrapped continuation lines too
-        indent, j = len(line) - len(line.lstrip()), i + 1
-        while j < len(lines) and lines[j].strip() and not BULLET.match(lines[j]) \
-                and len(lines[j]) - len(lines[j].lstrip()) > indent:
-            j += 1
-        keep.append(" ".join(ln.strip() for ln in lines[i:j]))
-        used.update(range(i, j))
+        if fence or i in used or not (BREAK_LINE.search(line) or BREAK_WORD.search(line)) or TOC.match(line) \
+                or MD_HEAD.match(line):
+            continue
+        if BULLET.match(line):
+            # the whole bullet: its wrapped continuation lines too
+            start, indent, j = i, len(line) - len(line.lstrip()), i + 1
+            while j < len(lines) and lines[j].strip() and not BULLET.match(lines[j]) \
+                    and len(lines[j]) - len(lines[j].lstrip()) > indent:
+                j += 1
+        else:
+            # a plain paragraph (e.g. Tandoor 2.6.1's "⚠️ if you did not have ALLOWED_HOSTS set ..."):
+            # the whole paragraph, up to blank lines, bullets or headings on either side
+            def plain(k):
+                return lines[k].strip() and not BULLET.match(lines[k]) and not MD_HEAD.match(lines[k]) \
+                    and not lines[k].lstrip().startswith("```")
+            start, j = i, i + 1
+            while start > 0 and plain(start - 1) and start - 1 not in used:
+                start -= 1
+            while j < len(lines) and plain(j):
+                j += 1
+            if lines[j - 1].rstrip().endswith(":"):  # "... are no longer available:" + the list after it
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                while j < len(lines) and (BULLET.match(lines[j]) or (lines[j].strip() and lines[j].startswith(" "))):
+                    j += 1
+        part = lines[start:j]
+        if BULLET.match(line) or not any(BULLET.match(ln) for ln in part):
+            keep.append(" ".join(ln.strip() for ln in part))
+        else:  # paragraph + its list: keep the list's lines
+            para = [ln for ln in part if ln.strip() and not BULLET.match(ln) and not ln.startswith(" ")]
+            keep.append(" ".join(ln.strip() for ln in para) + "\n" + "\n".join(
+                ln.rstrip() for ln in part[len(para):] if ln.strip()))
+        used.update(range(start, j))
     return "\n".join(keep)
 
 
