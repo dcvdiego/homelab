@@ -30,6 +30,14 @@ services:
       - CROWDSEC_BOUNCER_KEY=${CROWDSEC_BOUNCER_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Public resolvers for Traefik's own lookups (plugin download, ACME). CT 101 resolves through
+    # Tailscale MagicDNS, which forwards to this host's own Technitium; at boot Technitium isn't up yet,
+    # so the CrowdSec plugin download timed out, plugins were disabled and every crowdsec@docker route
+    # returned 404 (2026-11-01, 2026-11-07). Container names still resolve via Docker's embedded DNS;
+    # backends in config/host-services.yml are IPs or host.docker.internal.
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
     volumes:
       - /docker/traefik/certs:/certs
       - /docker/traefik/config:/config:ro
