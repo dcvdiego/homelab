@@ -40,6 +40,10 @@ MONITORS = [
     {"name": "Backups: database dumps (push)", "type": "push", "push_env": "KUMA_PUSH_DB_DUMPS",
      "push_token": os.environ.get("KUMA_PUSH_DB_DUMPS", ""), "interval": 90000, "maxretries": 0,
      "parent_name": "Infrastructure"},
+    # Zigbee2MQTT answering a health_check request over MQTT (z2m-health-check.timer on the agents box).
+    # It can hang after the Saturday backup pauses CT 101 while its container still shows "Up".
+    {"name": "Zigbee2MQTT (push)", "type": "push", "push_env": "KUMA_PUSH_Z2M",
+     "push_token": os.environ.get("KUMA_PUSH_Z2M", ""), "parent_name": "Infrastructure"},
     # --- DNS (see docs/networking.md#dns-failure-modes) ---
     # Technitium answering on the LAN, per instance, plus the local zone it serves.
     {"name": "DNS: Technitium docker-tower", "type": "dns", "hostname": "example.com",         "dns_server": "192.168.1.248", "parent_name": "DNS"},
