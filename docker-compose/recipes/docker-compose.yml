@@ -24,7 +24,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.recipes.rule=Host(`recipes.${DOMAIN}`)"
       - "traefik.http.routers.recipes.entrypoints=websecure"
-      - "traefik.http.services.recipes.loadbalancer.server.port=8080"
+      - "traefik.http.services.recipes.loadbalancer.server.port=80"
       # To enable Authentik forward auth: - "traefik.http.routers.recipes.middlewares=authentik-forwardauth@docker"
 
   # PostgreSQL database service
