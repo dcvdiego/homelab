@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Redeploy the Komodo stacks whose files changed in this push.
+"""Redeploy the Komodo stacks whose files changed since the last applied run (ops/bin/apply-base.py).
 
 A stack is redeployed when any changed file sits under its run_directory (docker-compose/<dir>/...).
 Komodo pulls the repo and runs `docker compose up -d`. The runner's own stack (docker-compose/ops) is
@@ -13,7 +13,10 @@ import sys
 import time
 import urllib.request
 
-before, sha = os.environ.get("BEFORE", ""), os.environ["GITHUB_SHA"]
+sha = os.environ["GITHUB_SHA"]
+# Diff from the last applied run, not just this push (see apply-base.py)
+before = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "apply-base.py")],
+                        capture_output=True, text=True).stdout.strip() or os.environ.get("BEFORE", "")
 if not before or set(before) == {"0"}:
     sys.exit(print("No previous commit to diff against; nothing to redeploy.") or 0)
 
