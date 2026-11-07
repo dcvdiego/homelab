@@ -34,6 +34,10 @@ MONITORS = [
     # --- Infrastructure ---
     {"name": "Komodo",           "url": "http://192.168.1.248:9120",             "parent_name": "Infrastructure"},
     {"name": "Proxmox",          "url": "https://192.168.1.148:8006",            "parent_name": "Infrastructure"},
+    # Through Traefik (split DNS → 192.168.1.224): fails if Traefik's routes break, e.g. the CrowdSec
+    # plugin missing after a boot (every route 404). The other HTTP monitors use container names and
+    # bypass Traefik. /v1/health is unauthenticated.
+    {"name": "Traefik (route to ntfy)", "url": f"https://ntfy.{os.environ['DOMAIN']}/v1/health", "parent_name": "Infrastructure"},
     {"name": "Authentik",        "url": "http://authentik-server:9000/-/health/ready/", "parent_name": "Infrastructure"},
     # Nightly database dumps on docker-prod (scripts/db-dumps.sh, cron 01:30) push up/down here.
     # 25h interval: one missed nightly run alerts.
