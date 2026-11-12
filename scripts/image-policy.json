@@ -274,10 +274,6 @@
     "ghcr.io/music-assistant/server": {
       "github": "music-assistant/server"
     },
-    "ghcr.io/bambanah/deemix": {
-      "github": "bambanah/deemix",
-      "tag_prefix": "deemix-webui@"
-    },
     "lscr.io/linuxserver/beets": {
       "github": "beetbox/beets"
     },

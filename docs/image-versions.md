@@ -78,11 +78,10 @@ Kinds:
 | `lscr.io/linuxserver/readarr` | servarr | off | Project retired June 2025, image archived. Remove or replace. | [deprecation](https://github.com/linuxserver/docker-readarr) |
 | `ghcr.io/seerr-team/seerr` | servarr | batch | Versioned tags `vX.Y.Z`. | [docs](https://docs.seerr.dev/getting-started/docker/) |
 | `cy01/blackhole` | servarr | batch | Versioned tags `vX.Y`. | [Docker Hub](https://hub.docker.com/r/cy01/blackhole) |
-| `deluan/navidrome` | music (deezer) | review | Versioned tags; upgrades can carry config and plugin changes (0.63 reworked the plugin API: plugins must be reinstalled). `/docker/navidrome` is backed up by the Komodo pre-deploy. | [docker](https://www.navidrome.org/docs/installation/docker/), [releases](https://github.com/navidrome/navidrome/releases) |
-| `ghcr.io/bambanah/deemix` | deezer | batch | Versioned tags `vX.Y.Z`. Retired at the music-stack cutover; the dir is removed in the cleanup PR. | [README](https://github.com/bambanah/deemix) |
+| `deluan/navidrome` | music | review | Versioned tags; upgrades can carry config and plugin changes (0.63 reworked the plugin API: plugins must be reinstalled). `/docker/navidrome` is backed up by the Komodo pre-deploy. | [docker](https://www.navidrome.org/docs/installation/docker/), [releases](https://github.com/navidrome/navidrome/releases) |
 | `cstaelen/tidarr` | music | review | Single maintainer: read the release notes of every version in between (1.2.2 renamed `DOWNLOAD_BATCH_CRON` → `DOWNLOAD_BATCH_DELAY`). Keep Tidal download batches conservative. | [README](https://github.com/cstaelen/tidarr), [releases](https://github.com/cstaelen/tidarr/releases) |
 | `ghcr.io/music-assistant/server` | music | review | Never switch stable ↔ beta by tag or move the database between channels; the container requires host networking. | [installation](https://www.music-assistant.io/installation/), [releases](https://github.com/music-assistant/server/releases) |
-| `lscr.io/linuxserver/beets` | music (deezer) | batch | linuxserver tags `X.Y.Z-lsN`. | [linuxserver](https://docs.linuxserver.io/images/docker-beets/) |
+| `lscr.io/linuxserver/beets` | music | batch | linuxserver tags `X.Y.Z-lsN`. | [linuxserver](https://docs.linuxserver.io/images/docker-beets/) |
 | `bugattiguy527/termix` | dev | batch | Tags `X.Y.Z` (older `release-X.Y.Z`). | [README](https://github.com/Termix-SSH/Termix) |
 | `ghcr.io/gethomepage/homepage` | homepage | batch | Versioned tags `vX.Y.Z`. | [install](https://gethomepage.dev/installation/docker/) |
 | `ghcr.io/moghtech/komodo-core` | komodo | review | Upstream compose uses major tag `2`; Core and Periphery on the same version (grouped PR). Not a Komodo stack: deploy by hand (below). | [setup](https://komo.do/docs/setup/mongo) |
