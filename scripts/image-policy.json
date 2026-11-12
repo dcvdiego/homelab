@@ -274,10 +274,6 @@
     "ghcr.io/REDACTED/server": {
       "github": "REDACTED/server"
     },
-    "ghcr.io/bambanah/REDACTED": {
-      "github": "bambanah/REDACTED",
-      "tag_prefix": "REDACTED-webui@"
-    },
     "lscr.io/linuxserver/REDACTED": {
       "github": "beetbox/REDACTED"
     },
