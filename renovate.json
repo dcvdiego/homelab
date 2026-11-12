@@ -53,7 +53,6 @@
         "lscr.io/linuxserver/bazarr",
         "ghcr.io/seerr-team/seerr",
         "cy01/blackhole",
-        "deluan/navidrome",
         "ghcr.io/bambanah/deemix",
         "lscr.io/linuxserver/beets",
         "collabora/code",
@@ -96,7 +95,10 @@
         "ghcr.io/moghtech/komodo-core",
         "ghcr.io/moghtech/komodo-periphery",
         "mongo",
-        "ghcr.io/nikosch86/docker-proxmox-backup-server"
+        "ghcr.io/nikosch86/docker-proxmox-backup-server",
+        "deluan/navidrome",
+        "cstaelen/tidarr",
+        "ghcr.io/music-assistant/server"
       ],
       "addLabels": ["review"]
     },
@@ -221,6 +223,20 @@
     {"matchPackageNames": ["ghcr.io/hotio/radarr"], "sourceUrl": "https://github.com/Radarr/Radarr"},
     {"matchPackageNames": ["ghcr.io/hotio/sonarr"], "sourceUrl": "https://github.com/Sonarr/Sonarr"},
     {"matchPackageNames": ["ghcr.io/hotio/prowlarr"], "sourceUrl": "https://github.com/Prowlarr/Prowlarr"},
+    {
+      "matchPackageNames": ["deluan/navidrome"],
+      "prBodyNotes": ["**Navidrome**: read the release notes for config and plugin changes — 0.63 reworked the plugin API, so the ListenBrainz jams plugin needs reinstalling when upgrading across it. `/docker/navidrome` is backed up by the Komodo pre-deploy. Releases: https://github.com/navidrome/navidrome/releases"]
+    },
+    {
+      "matchPackageNames": ["cstaelen/tidarr"],
+      "sourceUrl": "https://github.com/cstaelen/tidarr",
+      "prBodyNotes": ["**Tidarr**: single maintainer; read the release notes of every version in between for env-var renames (1.2.2 replaced `DOWNLOAD_BATCH_CRON` with `DOWNLOAD_BATCH_DELAY`). Releases: https://github.com/cstaelen/tidarr/releases"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/music-assistant/server"],
+      "sourceUrl": "https://github.com/music-assistant/server",
+      "prBodyNotes": ["**Music Assistant**: never switch between the stable and beta channels by changing the tag, and never move or copy the database between channels. Host networking is required for player discovery. Releases: https://github.com/music-assistant/server/releases"]
+    },
     {
       "matchPackageNames": ["lscr.io/linuxserver/bazarr"],
       "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-ls(?<build>\\d+)$",

@@ -1,0 +1,111 @@
+version: '3.8'
+
+# Music stack (replaces the deezer stack's deemix + navidrome + beets):
+#   navidrome        music server: per-user favourites/playlists, ListenBrainz scrobbling (token in
+#                    each user's profile), LB jams plugin (drop the .ndp in /docker/navidrome/plugins)
+#   tidarr           Tidal downloader (replaces deemix): syncs the Tidal account's favourites and
+#                    playlists, downloads max-quality FLAC, tags with its embedded beets 2.5.1,
+#                    writes ReplayGain, then triggers a Navidrome rescan
+#   music-assistant  unified local + Tidal streaming, HEOS/AirPlay players, mixes/radio
+#                    (host networking, no Traefik: UI on http://192.168.1.224:8095)
+#   beets            one-off library surgery on the existing FLAC collection (Tidarr handles new
+#                    downloads with its own embedded beets)
+#
+# Cutover from the deezer stack: delete the deezer stack in Komodo FIRST (beets/navidrome name and
+# /docker/navidrome conflicts), then create and deploy this stack. See the music-stack PR.
+
+services:
+  navidrome:
+    image: deluan/navidrome:0.64.2@sha256:38dc2727bfcfd5ede290f8ada114fc90368146f265ae4701ddddbcbe2a44ee52
+    container_name: navidrome
+    user: 1000:1000
+    restart: unless-stopped
+    environment:
+      - ND_PLUGINS_ENABLED=true
+      # ND_LASTFM_APIKEY optional (instant mixes via the Last.fm agent) — Komodo stack env
+    volumes:
+      - /docker/navidrome:/data
+      - /data/music:/music/diego:ro
+      - /data/music_amirah:/music/amirah:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`music.${DOMAIN}`)"
+      - "traefik.http.routers.navidrome.entrypoints=websecure"
+      - "traefik.http.services.navidrome.loadbalancer.server.port=4533"
+      # NOTE: Navidrome has API clients (Symfonium) — do NOT add forward auth
+
+  tidarr:
+    image: cstaelen/tidarr:1.2.9@sha256:7eb46d369bee03891f2d26e019eb925ad87ccb9913b0dcc888e7a31683f5e75d
+    container_name: tidarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/London
+      - ENABLE_BEETS=true
+      - REPLAY_GAIN=true
+      - ENABLE_HISTORY=true
+      # Rate-limit posture: favourites/playlist sync hourly 08:00–00:59, quiet 01:00–07:59
+      # (the container is also stopped 01:00–08:00 by /etc/cron.d/tidarr-schedule on docker-prod).
+      # Backfill profile: ~20 albums/hour max inside the window; step down to 3/60 once caught up.
+      - 'SYNC_CRON_EXPRESSION=0 8-23,0 * * *'
+      - DOWNLOAD_BATCH_SIZE=10
+      - DOWNLOAD_BATCH_DELAY=30
+      - NAVIDROME_URL=http://navidrome:4533
+      - NAVIDROME_PUBLIC_URL=https://music.${DOMAIN}
+      - NAVIDROME_USER=${TIDARR_NAVIDROME_USER}
+      - NAVIDROME_PASSWORD=${TIDARR_NAVIDROME_PASSWORD}
+      - ADMIN_PASSWORD=${TIDARR_ADMIN_PASSWORD}
+      # Push notifications via the existing ntfy (optional: clear these three to disable)
+      - NTFY_URL=https://ntfy.${DOMAIN}
+      - NTFY_TOPIC=tidarr
+      - NTFY_TOKEN=${TIDARR_NTFY_TOKEN}
+      # OIDC (Authentik) can replace ADMIN_PASSWORD:
+      # - OIDC_ISSUER=https://auth.${DOMAIN}
+      # - OIDC_CLIENT_ID=tidarr
+      # - OIDC_CLIENT_SECRET=${TIDARR_OIDC_CLIENT_SECRET}
+      # - OIDC_REDIRECT_URI=https://tidarr.${DOMAIN}/api/auth/oidc/callback
+    volumes:
+      - /docker/tidarr:/shared
+      - /data/music:/music
+      - /data/tidarr/processing:/shared/.processing # keep temp downloads off the SSD (/docker)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tidarr.rule=Host(`tidarr.${DOMAIN}`)"
+      - "traefik.http.routers.tidarr.entrypoints=websecure"
+      - "traefik.http.services.tidarr.loadbalancer.server.port=8484"
+
+  music-assistant:
+    image: ghcr.io/music-assistant/server:2.10.9@sha256:4ac0d5844363fbbefd6a61251df09d96cd546e05e01b8c1cc1a28803f0935e07
+    container_name: music-assistant
+    restart: unless-stopped
+    # Host networking is required by upstream for player discovery and streaming (HEOS/AirPlay
+    # use mDNS + random ports). No Traefik labels (host-networked): web UI http://192.168.1.224:8095
+    # (mass.homelab.lan), stream server :8097.
+    network_mode: host
+    environment:
+      - TZ=Europe/London
+    volumes:
+      - /docker/music-assistant:/data
+      - /data/music:/media/diego:ro
+      - /data/music_amirah:/media/amirah:ro
+
+  beets:
+    image: lscr.io/linuxserver/beets:2.5.1-ls301@sha256:d591337d1c7bc512b52c8e19a6f881f3095b0bcd4f41b697a3b8f747df6d477d
+    container_name: beets
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /docker/beets:/config
+      - /data/music:/music/diego
+      - /data/music_amirah:/music/amirah
+    # port 8337 dropped: beets is driven with `docker exec beets beet …`; restore if the web UI is wanted
+
+networks:
+  default:
+    name: network_default
+    external: true

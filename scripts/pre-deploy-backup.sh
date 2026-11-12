@@ -153,6 +153,15 @@ case "$STACK" in
     mariadb romm-db
     files romm-assets /docker/romm/assets
     files romm-config /docker/romm/config ;;
+  music)
+    # All four stopped for a consistent copy (tidarr writes queue/history JSON mid-download);
+    # the deploy recreates them right after.
+    # First deploy: /docker/tidarr and /docker/music-assistant may not exist yet (files skips).
+    stop navidrome beets music-assistant tidarr
+    files navidrome /docker/navidrome 'cache'
+    files beets /docker/beets
+    files tidarr /docker/tidarr '.processing'
+    files music-assistant /docker/music-assistant 'cache' ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;
