@@ -53,7 +53,6 @@
         "lscr.io/linuxserver/REDACTED",
         "ghcr.io/REDACTED-team/REDACTED",
         "REDACTED/REDACTED",
-        "deluan/REDACTED",
         "ghcr.io/bambanah/REDACTED",
         "lscr.io/linuxserver/REDACTED",
         "collabora/code",
@@ -96,7 +95,10 @@
         "ghcr.io/moghtech/komodo-core",
         "ghcr.io/moghtech/komodo-periphery",
         "mongo",
-        "ghcr.io/nikosch86/docker-proxmox-backup-server"
+        "ghcr.io/nikosch86/docker-proxmox-backup-server",
+        "deluan/REDACTED",
+        "cstaelen/REDACTED",
+        "ghcr.io/REDACTED/server"
       ],
       "addLabels": ["review"]
     },
@@ -221,6 +223,20 @@
     {"matchPackageNames": ["ghcr.io/hotio/REDACTED"], "sourceUrl": "https://github.com/REDACTED/REDACTED"},
     {"matchPackageNames": ["ghcr.io/hotio/REDACTED"], "sourceUrl": "https://github.com/REDACTED/REDACTED"},
     {"matchPackageNames": ["ghcr.io/hotio/REDACTED"], "sourceUrl": "https://github.com/REDACTED/REDACTED"},
+    {
+      "matchPackageNames": ["deluan/REDACTED"],
+      "prBodyNotes": ["**REDACTED**: read the release notes for config and plugin changes — 0.63 reworked the plugin API, so the ListenBrainz jams plugin needs reinstalling when upgrading across it. `/docker/REDACTED` is backed up by the Komodo pre-deploy. Releases: https://github.com/REDACTED/REDACTED/releases"]
+    },
+    {
+      "matchPackageNames": ["cstaelen/REDACTED"],
+      "sourceUrl": "https://github.com/cstaelen/REDACTED",
+      "prBodyNotes": ["**REDACTED**: single maintainer; read the release notes of every version in between for env-var renames (1.2.2 replaced `DOWNLOAD_BATCH_CRON` with `DOWNLOAD_BATCH_DELAY`). Releases: https://github.com/cstaelen/REDACTED/releases"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/REDACTED/server"],
+      "sourceUrl": "https://github.com/REDACTED/server",
+      "prBodyNotes": ["**REDACTED Assistant**: never switch between the stable and beta channels by changing the tag, and never move or copy the database between channels. Host networking is required for player discovery. Releases: https://github.com/REDACTED/server/releases"]
+    },
     {
       "matchPackageNames": ["lscr.io/linuxserver/REDACTED"],
       "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-ls(?<build>\\d+)$",

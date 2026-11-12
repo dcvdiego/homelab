@@ -153,6 +153,15 @@ case "$STACK" in
     mariadb REDACTED-db
     files REDACTED-assets /docker/REDACTED/assets
     files REDACTED-config /docker/REDACTED/config ;;
+  REDACTED)
+    # All four stopped for a consistent copy (REDACTED writes queue/history JSON mid-download);
+    # the deploy recreates them right after.
+    # First deploy: /docker/REDACTED and /docker/REDACTED may not exist yet (files skips).
+    stop REDACTED REDACTED REDACTED REDACTED
+    files REDACTED /docker/REDACTED 'cache'
+    files REDACTED /docker/REDACTED
+    files REDACTED /docker/REDACTED '.processing'
+    files REDACTED /docker/REDACTED 'cache' ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;
