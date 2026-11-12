@@ -154,9 +154,10 @@ case "$STACK" in
     files romm-assets /docker/romm/assets
     files romm-config /docker/romm/config ;;
   music)
-    # SQLite apps stopped for a consistent copy; the deploy recreates them right after.
+    # All four stopped for a consistent copy (tidarr writes queue/history JSON mid-download);
+    # the deploy recreates them right after.
     # First deploy: /docker/tidarr and /docker/music-assistant may not exist yet (files skips).
-    stop navidrome beets music-assistant
+    stop navidrome beets music-assistant tidarr
     files navidrome /docker/navidrome 'cache'
     files beets /docker/beets
     files tidarr /docker/tidarr '.processing'
