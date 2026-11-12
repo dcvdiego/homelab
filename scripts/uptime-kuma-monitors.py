@@ -69,8 +69,9 @@ MONITORS = [
     {"name": "Prowlarr",         "url": "http://prowlarr:9696",             "parent_name": "Media"},
     {"name": "Bazarr",           "url": "http://bazarr:6767",             "parent_name": "Media"},
     {"name": "Readarr",          "url": "http://readarr:8787",             "parent_name": "Media"},
-    {"name": "Navidrome",        "url": "http://deezer-navidrome-1:4533",             "parent_name": "Media"},
-    {"name": "Deemix",           "url": "http://deemix:6595",             "parent_name": "Media"},
+    {"name": "Navidrome",        "url": "http://navidrome:4533",             "parent_name": "Media"},
+    {"name": "Tidarr",           "url": "http://tidarr:8484",             "parent_name": "Media"},
+    {"name": "Music Assistant",  "url": "http://192.168.1.224:8095",             "parent_name": "Media"},
     {"name": "RomM",             "url": "http://romm:8080/api/heartbeat",             "parent_name": "Media"},
     # --- Apps ---
     {"name": "Immich",           "url": "http://immich_server:2283/api/server/ping",             "parent_name": "Apps"},
@@ -85,6 +86,7 @@ GROUPS = ["Monitoring", "Infrastructure", "DNS", "Media", "Apps"]
 # Monitors for services that no longer exist; deleted if present.
 RETIRED = [
     "Portainer",                     # replaced by Komodo (2026-10-07)
+    "Deemix",                        # replaced by Tidarr in the music stack (2026-11-12)
     "DNS: Technitium docker-prod",   # replaced by the LAN push monitors (2026-10-24)
     "DNS: homelab.lan zone",
 ]

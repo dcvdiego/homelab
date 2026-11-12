@@ -268,6 +268,12 @@
     "deluan/navidrome": {
       "github": "navidrome/navidrome"
     },
+    "cstaelen/tidarr": {
+      "github": "cstaelen/tidarr"
+    },
+    "ghcr.io/music-assistant/server": {
+      "github": "music-assistant/server"
+    },
     "ghcr.io/bambanah/deemix": {
       "github": "bambanah/deemix",
       "tag_prefix": "deemix-webui@"
