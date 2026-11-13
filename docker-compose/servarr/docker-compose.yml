@@ -173,7 +173,7 @@ services:
   #     - rclone
 
   blackhole:
-    image: cy01/blackhole:v0.4.0@sha256:1b67f858e26d13f82c884da220b934f66995fb343485210ff9de3d97d53e2a82 # running image predated every version tag; v0.4.0 is the oldest release
+    image: cy01/blackhole:v0.5.2@sha256:c97c50624770bed12ace870b3742221c8c0981f132abb8cf79d1ecbf9e7add49 # running image predated every version tag; v0.4.0 is the oldest release
     container_name: blackhole
     ports:
       - "8282:8282" # qBittorrent
