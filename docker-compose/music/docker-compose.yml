@@ -46,10 +46,11 @@ services:
       - ENABLE_BEETS=true
       - REPLAY_GAIN=true
       - ENABLE_HISTORY=true
-      # Rate-limit posture: favourites/playlist sync hourly 08:00–00:59, quiet 01:00–07:59
-      # (the container is also stopped 01:00–08:00 by /etc/cron.d/tidarr-schedule on docker-prod).
-      # Backfill profile: ~20 albums/hour max inside the window; step down to 3/60 once caught up.
-      - 'SYNC_CRON_EXPRESSION=0 8-23,0 * * *'
+      # Rate-limit posture: favourites/playlist sync hourly round the clock (cheap API reads —
+      # this is what gets a late-night like downloaded within ~1–2h). Downloads are throttled by
+      # the batch limits only (~20 albums/hour; step down to 3/60 once the backfill is done).
+      # The 01:00–08:00 stop/start cron was removed 2026-11-13: pacing, not hours, is the control.
+      - 'SYNC_CRON_EXPRESSION=0 * * * *'
       - DOWNLOAD_BATCH_SIZE=10
       - DOWNLOAD_BATCH_DELAY=30
       - NAVIDROME_URL=http://navidrome:4533
