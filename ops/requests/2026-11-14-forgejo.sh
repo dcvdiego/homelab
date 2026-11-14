@@ -30,7 +30,9 @@
 # until Phase 4 repoints stacks to it.
 set -u
 PVE() { ssh -F "$OPS_SSH_CONFIG" pve "$@"; }
-FJ() { PVE "pct exec 104 -- docker exec -u 1000 forgejo forgejo $*"; }   # forgejo CLI in the container
+# forgejo CLI in the container (container "forgejo", binary "forgejo"). Arguments go through two remote
+# shells unquoted: pass plain words only (no spaces or shell metacharacters), as every call below does.
+FJ() { PVE "pct exec 104 -- docker exec -u 1000 forgejo forgejo $*"; }
 rc=0
 
 echo "== 1. CT 104: directories"
@@ -131,12 +133,14 @@ for u in diego homelabsito renovate-bot; do
                   --username diego --email diego@homelab.lan --random-password --random-password-length 24 \
                   --must-change-password)
             printf "%s\n" "$out" | sed -n "s/.*random password is .\(.*\).$/\1/p" | tail -n 1 > /root/fj-pw
-            [ -s /root/fj-pw ]
+            # Expected output: generated random password is (quote)<24 chars>(quote). Anything else: stop and
+            # save nothing, rather than store a wrong password
+            [ "$(tr -d "\n" < /root/fj-pw | wc -c)" -eq 24 ] || { rm -f /root/fj-pw; exit 1; }
             pct push 104 /root/fj-pw /root/forgejo-initial-password --perms 600 --user 0 --group 0
             rm -f /root/fj-pw'; then
       echo "user diego: created (admin); initial password in CT 104 /root/forgejo-initial-password"
     else
-      echo "user diego: FAILED"; exit 1
+      echo "user diego: FAILED (if the user exists now, set a password with: docker exec -u 1000 forgejo forgejo admin user change-password -u diego -p <new>)"; exit 1
     fi
   else
     if FJ admin user create --username "$u" --email "$u@homelab.lan" --random-password \
