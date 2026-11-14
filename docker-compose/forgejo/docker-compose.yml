@@ -1,0 +1,60 @@
+# forgejo: private git forge for the stacks that left the public repo (docs/forgejo-split.md).
+# Deploy on docker-tower. LAN only: http://git.homelab.lan:3200 (no Traefik, no Cloudflare record or
+# tunnel rule), like Technitium's admin port. Sign-in required for every page; no self-registration.
+#
+# Forgejo holds no deploy credentials (docs/forgejo-split.md, "Why no secrets in Forgejo"): merges to
+# homelab-private are deployed from the Komodo UI, and Renovate runs as its own Komodo stack. The runner
+# below only runs CI that needs nothing secret (image policy check on PRs).
+#
+# Image: rootless variant (uid 1000; data, repos and custom/conf/app.ini under /var/lib/gitea), per
+# https://forgejo.org/docs/latest/admin/installation/docker/. SQLite (the default) is plenty for 3 users.
+# Upgrades: back up first (Komodo pre-deploy does), majors need `forgejo doctor check --all` and a look
+# at the release notes: docs/image-versions.md.
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:17.0.1-rootless@sha256:5ef02fbcf22beef56b8c844952ffad58cfe177b6f98e46e6abb5df90b88dc8d3
+    container_name: forgejo
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - FORGEJO__server__DOMAIN=git.homelab.lan
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__server__ROOT_URL=http://git.homelab.lan:3200/
+      - FORGEJO__server__DISABLE_SSH=true          # HTTP(S) clones with tokens only
+      - FORGEJO__security__INSTALL_LOCK=true       # no web installer; users are created by the ops request
+      - FORGEJO__security__SECRET_KEY=${FORGEJO_SECRET_KEY:?set in the Komodo stack env}
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=true
+      - FORGEJO__repository__FORCE_PRIVATE=true
+      - FORGEJO__actions__ENABLED=true
+      - FORGEJO__log__LEVEL=Info
+    volumes:
+      - /docker/forgejo/data:/var/lib/gitea
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3200:3000"   # 3000 is already published by another stack on this host
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://localhost:3000/api/healthz || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+
+  # Forgejo Actions runner, registered to diego/homelab-private only (scope owner/repo), host executor
+  # (label homelab-private-ci:host): jobs run inside this container, with no Docker socket and no
+  # secrets. Config (connection uuid + token) is written by ops/requests/2026-11-14-forgejo.sh; until it
+  # exists the container waits instead of crash-looping.
+  runner:
+    build: ./runner
+    container_name: forgejo-runner
+    restart: unless-stopped
+    depends_on:
+      - forgejo
+    command: ["sh", "-c", "until [ -s /data/config.yml ]; do sleep 30; done; exec forgejo-runner daemon --config /data/config.yml"]
+    volumes:
+      - /docker/forgejo/runner:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]

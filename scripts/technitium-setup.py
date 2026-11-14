@@ -62,6 +62,7 @@ RECORDS = [
 
     # --- Infrastructure ---
     ("portainer",       "192.168.1.248"),
+    ("git",             "192.168.1.248"),   # Forgejo (direct port 3200)
     ("dns-prod",        "192.168.1.224"),
     ("dns-tower",       "192.168.1.248"),
 ]

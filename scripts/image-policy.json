@@ -284,6 +284,12 @@
     "ghcr.io/actions/actions-runner": {
       "github": "actions/runner"
     },
+    "codeberg.org/forgejo/forgejo": {
+      "link": "https://codeberg.org/forgejo/forgejo/releases"
+    },
+    "data.forgejo.org/forgejo/runner": {
+      "link": "https://code.forgejo.org/forgejo/runner/releases"
+    },
     "mongo": {
       "link": "https://www.mongodb.com/docs/manual/release-notes/"
     },
