@@ -15,6 +15,9 @@ services:
     image: rommapp/romm:5.4.1@sha256:8677fb7b81b1d3db20b849e989a1dadc2a11159e51eb34a2acdcb01102274edf
     container_name: romm
     restart: unless-stopped
+    # Hard cap so a scan/metadata-import spike OOM-kills RomM, not Frigate etc. (LXC 101 has no swap).
+    # Steady state ~1.2 GiB with 4 web + 4 scan workers; raise if scans get killed.
+    mem_limit: 2g
     environment:
       - ROMM_DB_DRIVER=mariadb
       - DB_HOST=romm-db
