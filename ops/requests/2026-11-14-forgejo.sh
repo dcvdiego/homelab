@@ -21,11 +21,10 @@
 # 7. Runner: registered offline with scope diego/homelab-private and label homelab-private-ci (host
 #    executor); config written to /docker/forgejo/runner/config.yml (mode 600); runner restarted.
 #
-# Tokens: an admin token "ops-setup-<time>" for diego (scopes write:repository, read:user, not all) is
-# made only while steps 5-7 aren't done; when they all succeed, CT 104 /root/forgejo-setup-done is
-# written and later runs make no tokens. A bot token is made only if the agents box has none. Forgejo
-# can't delete tokens from the CLI or with a token: delete the ops-setup-* tokens in Forgejo (Settings >
-# Applications) once this has run. git gets only the variables it needs, never the runner's secrets.
+# Tokens: steps 5-7 use a temporary admin user "ops-setup" and its token, and delete that user on exit
+# (also on failure): deleting a user revokes its tokens, so no setup credential outlives this run.
+# A bot token is made only if the agents box has none. git gets only the variables it needs, never
+# the runner's secrets.
 #
 # Undo: Komodo -> Stacks -> forgejo -> Destroy, delete the stack; CT 104 `rm -r /docker/forgejo
 # /root/forgejo-initial-password`; CT 102 `rm /home/diego/.config/homelab/forgejo-token`; delete
@@ -33,9 +32,9 @@
 # until Phase 4 repoints stacks to it.
 set -u
 PVE() { ssh -F "$OPS_SSH_CONFIG" pve "$@"; }
-# forgejo CLI in the container (container "forgejo", binary "forgejo"). Arguments go through two remote
-# shells unquoted: pass plain words only (no spaces or shell metacharacters), as every call below does.
-FJ() { PVE "pct exec 104 -- docker exec -u 1000 forgejo forgejo $*"; }
+# forgejo CLI in the container (container "forgejo", binary "forgejo"). pvehost's shell is the only one
+# that parses the command (pct exec and docker exec pass argv through), so each argument is quoted once.
+FJ() { PVE "pct exec 104 -- docker exec -u 1000 forgejo forgejo $(printf '%q ' "$@")"; }
 rc=0
 
 echo "== 1. CT 104: directories"
@@ -156,13 +155,17 @@ for u in diego homelabsito renovate-bot; do
 done
 
 echo "== 5+6+7. Repo, protection, bot token, runner"
-if PVE 'pct exec 104 -- test -e /root/forgejo-setup-done'; then
-  echo "setup: done on an earlier run (no tokens made)"
-  PVE 'pct exec 104 -- docker ps --filter name=forgejo --format "{{.Names}}: {{.Status}}"'
-  exit $rc
-fi
-ADMIN_TOKEN=$(FJ admin user generate-access-token -u diego -t "ops-setup-$(date +%s)" \
-                --scopes write:repository,read:user --raw 2>/dev/null)
+# Temporary admin "ops-setup": removed on any exit, which revokes its token
+drop_setup_user() {
+  if FJ admin user delete --username ops-setup >/dev/null 2>&1; then echo "setup user: deleted (token revoked)"
+  else echo "setup user: NOT deleted: delete user ops-setup in Forgejo (Site administration > Users)"; fi
+}
+FJ admin user delete --username ops-setup >/dev/null 2>&1 || true   # left over from a killed run
+FJ admin user create --admin --username ops-setup --email ops-setup@homelab.lan --random-password \
+   --random-password-length 32 --must-change-password=false >/dev/null || { echo "setup user: FAILED"; exit 1; }
+trap drop_setup_user EXIT
+ADMIN_TOKEN=$(FJ admin user generate-access-token -u ops-setup -t setup \
+                --scopes write:admin,write:repository,read:user --raw 2>/dev/null) || ADMIN_TOKEN=
 [ -n "$ADMIN_TOKEN" ] || { echo "admin token: FAILED"; exit 1; }
 export ADMIN_TOKEN
 
@@ -184,7 +187,7 @@ st, _ = api("GET", "/repos/diego/homelab-private")
 if st == 200:
     print("repo: exists (history left as is)")
 else:
-    st, _ = api("POST", "/user/repos", {"name": "homelab-private", "private": True, "default_branch": "main",
+    st, _ = api("POST", "/admin/users/diego/repos", {"name": "homelab-private", "private": True, "default_branch": "main",
                                         "description": "Sensitive stacks split from dcvdiego/homelab (docs/forgejo-split.md)"})
     print(f"repo: created: {st}"); ok &= st == 201
     # Full history of main. Token via GIT_CONFIG_* env, never on argv or in a URL.
@@ -277,7 +280,4 @@ PVE 'pct exec 104 -- docker ps --filter name=forgejo --format "{{.Names}}: {{.St
 # The runner's own log never contains the token; the tail shows whether it connected
 PVE 'pct exec 104 -- docker logs --tail 5 forgejo-runner 2>&1' | cut -c1-200
 
-if [ "$rc" -eq 0 ] && PVE 'pct exec 104 -- touch /root/forgejo-setup-done'; then
-  echo "setup: done (later runs make no tokens); delete the ops-setup-* token in Forgejo"
-fi
 exit $rc
