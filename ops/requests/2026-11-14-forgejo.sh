@@ -21,8 +21,11 @@
 # 7. Runner: registered offline with scope diego/homelab-private and label homelab-private-ci (host
 #    executor); config written to /docker/forgejo/runner/config.yml (mode 600); runner restarted.
 #
-# Leaves behind an admin token "ops-setup" for diego: delete it in Forgejo (Settings > Applications)
-# after Phase 4 of docs/forgejo-split.md, it is only needed until then.
+# Tokens: an admin token "ops-setup-<time>" for diego (scopes write:repository, read:user, not all) is
+# made only while steps 5-7 aren't done; when they all succeed, CT 104 /root/forgejo-setup-done is
+# written and later runs make no tokens. A bot token is made only if the agents box has none. Forgejo
+# can't delete tokens from the CLI or with a token: delete the ops-setup-* tokens in Forgejo (Settings >
+# Applications) once this has run. git gets only the variables it needs, never the runner's secrets.
 #
 # Undo: Komodo -> Stacks -> forgejo -> Destroy, delete the stack; CT 104 `rm -r /docker/forgejo
 # /root/forgejo-initial-password`; CT 102 `rm /home/diego/.config/homelab/forgejo-token`; delete
@@ -153,12 +156,15 @@ for u in diego homelabsito renovate-bot; do
 done
 
 echo "== 5+6+7. Repo, protection, bot token, runner"
-ADMIN_TOKEN=$(FJ admin user generate-access-token -u diego -t "ops-setup-$(date +%s)" --scopes all --raw 2>/dev/null)
-BOT_TOKEN=$(FJ admin user generate-access-token -u homelabsito -t "agents-box-$(date +%s)" \
-              --scopes write:repository,write:issue,read:user --raw 2>/dev/null)
-[ -n "$ADMIN_TOKEN" ] && [ -n "$BOT_TOKEN" ] || { echo "tokens: FAILED"; exit 1; }
-export ADMIN_TOKEN BOT_TOKEN
-FJURL=http://192.168.1.248:3200
+if PVE 'pct exec 104 -- test -e /root/forgejo-setup-done'; then
+  echo "setup: done on an earlier run (no tokens made)"
+  PVE 'pct exec 104 -- docker ps --filter name=forgejo --format "{{.Names}}: {{.Status}}"'
+  exit $rc
+fi
+ADMIN_TOKEN=$(FJ admin user generate-access-token -u diego -t "ops-setup-$(date +%s)" \
+                --scopes write:repository,read:user --raw 2>/dev/null)
+[ -n "$ADMIN_TOKEN" ] || { echo "admin token: FAILED"; exit 1; }
+export ADMIN_TOKEN
 
 python3 - <<'PY' || rc=1
 import json, os, subprocess, sys, tempfile, urllib.error, urllib.request
@@ -182,11 +188,14 @@ else:
                                         "description": "Sensitive stacks split from dcvdiego/homelab (docs/forgejo-split.md)"})
     print(f"repo: created: {st}"); ok &= st == 201
     # Full history of main. Token via GIT_CONFIG_* env, never on argv or in a URL.
-    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="http.extraHeader",
+    # git gets a minimal env (none of the runner's secrets); the Forgejo header only on the push
+    base = {k: os.environ[k] for k in ("PATH", "HOME", "LANG") if k in os.environ}
+    base.update(GIT_TERMINAL_PROMPT="0", GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL="/dev/null")
+    env = dict(base, GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="http.extraHeader",
                GIT_CONFIG_VALUE_0=f"Authorization: token {os.environ['ADMIN_TOKEN']}")
     with tempfile.TemporaryDirectory() as d:
         r1 = subprocess.run(["git", "clone", "-q", "--bare", "--single-branch", "--branch", "main",
-                             "https://github.com/dcvdiego/homelab", d], capture_output=True)
+                             "https://github.com/dcvdiego/homelab", d], env=base, capture_output=True)
         r2 = subprocess.run(["git", "-C", d, "push", "-q", "http://192.168.1.248:3200/diego/homelab-private.git",
                              "main:main"], env=env, capture_output=True) if r1.returncode == 0 else r1
     print(f"repo: history pushed: {'ok' if r2.returncode == 0 else 'FAILED'}"); ok &= r2.returncode == 0
@@ -206,8 +215,14 @@ print(f"collaborator homelabsito (write): {st}"); ok &= st == 204
 sys.exit(0 if ok else 1)
 PY
 
-# Bot token -> agents box, via pvehost (written root-only there first, removed after the push)
-if printf '%s\n' "$BOT_TOKEN" | PVE 'set -e; umask 077; cat > /root/fj-bot
+# Bot token -> agents box, via pvehost (written root-only there first, removed after the push).
+# Only if the agents box has none: an extra token would stay valid in Forgejo.
+if PVE 'pct exec 102 -- test -s /home/diego/.config/homelab/forgejo-token'; then
+  echo "bot token: agents box already has one (none made)"
+elif ! BOT_TOKEN=$(FJ admin user generate-access-token -u homelabsito -t "agents-box-$(date +%s)" \
+                     --scopes write:repository,write:issue,read:user --raw 2>/dev/null) || [ -z "$BOT_TOKEN" ]; then
+  echo "bot token: FAILED"; rc=1
+elif printf '%s\n' "$BOT_TOKEN" | PVE 'set -e; umask 077; cat > /root/fj-bot
        pct push 102 /root/fj-bot /home/diego/.config/homelab/forgejo-token --perms 600 \
          --user "$(pct exec 102 -- id -u diego)" --group "$(pct exec 102 -- id -g diego)"
        rm -f /root/fj-bot'; then
@@ -262,4 +277,7 @@ PVE 'pct exec 104 -- docker ps --filter name=forgejo --format "{{.Names}}: {{.St
 # The runner's own log never contains the token; the tail shows whether it connected
 PVE 'pct exec 104 -- docker logs --tail 5 forgejo-runner 2>&1' | cut -c1-200
 
+if [ "$rc" -eq 0 ] && PVE 'pct exec 104 -- touch /root/forgejo-setup-done'; then
+  echo "setup: done (later runs make no tokens); delete the ops-setup-* token in Forgejo"
+fi
 exit $rc
