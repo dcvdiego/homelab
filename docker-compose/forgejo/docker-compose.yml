@@ -32,7 +32,9 @@ services:
       - /docker/forgejo/data:/var/lib/gitea
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - "3200:3000"   # 3000 is already published by another stack on this host
+      # LAN IP only, like the network stack's HOST_IP binding (3000 is already published on this host).
+      # Everything else reaches it at 192.168.1.248:3200 or, inside the stack, forgejo:3000.
+      - "192.168.1.248:3200:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://localhost:3000/api/healthz || exit 1"]
       interval: 60s
