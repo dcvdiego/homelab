@@ -1,7 +1,9 @@
 # Forgejo (docker-compose/forgejo) on docker-tower, and the private repo diego/homelab-private in it.
 # Phases 1 and 2a of docs/forgejo-split.md.
 #
-# 1. CT 104: /docker/forgejo/{data,runner}, owned by uid/gid 1000 (both images run as 1000).
+# 1. CT 104: /docker/forgejo/{data,runner}, owned by uid/gid 1000 (both images run as 1000), mode 700:
+#    data holds app.ini (internal token, JWT secrets), the SQLite DB and the repos; no other host user
+#    (e.g. the read-only ai-agent) may read it.
 # 2. DNS: git.homelab.lan -> 192.168.1.248 on both Technitium instances. No Cloudflare record or
 #    tunnel rule: Forgejo is LAN only.
 # 3. Komodo: stack "forgejo" on docker-tower from git (docker-compose/forgejo, Pre Deploy =
@@ -33,7 +35,8 @@ rc=0
 
 echo "== 1. CT 104: directories"
 if PVE 'pct exec 104 -- sh -c "set -e; mkdir -p /docker/forgejo/data /docker/forgejo/runner
-        chown 1000:1000 /docker/forgejo/data /docker/forgejo/runner; chmod 700 /docker/forgejo/runner
+        chown 1000:1000 /docker/forgejo/data /docker/forgejo/runner
+        chmod 700 /docker/forgejo/data /docker/forgejo/runner
         ls -ld /docker/forgejo/data /docker/forgejo/runner"'; then
   echo "dirs: ok"
 else
