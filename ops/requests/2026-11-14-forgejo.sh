@@ -106,9 +106,17 @@ for _ in range(180):
         break
     time.sleep(5)
 print(f"komodo: deploy forgejo: {'ok' if u.get('success') else 'FAILED'}")
+# Failed stages: name and error tail only, with every stack env value redacted (the output lands in
+# /docker/ops/results, which agents can read)
+env_vals = [l.split("=", 1)[1].strip() for l in
+            komodo("read", "GetStack", {"stack": NAME})["config"].get("environment", "").splitlines()
+            if "=" in l and len(l.split("=", 1)[1].strip()) >= 8]
 for log in u.get("logs", []):
     if not log.get("success"):
-        print(f"  stage {log.get('stage')}: {(log.get('stderr') or '')[-1500:]}")
+        err = (log.get("stderr") or "")[-1500:]
+        for v in env_vals:
+            err = err.replace(v, "<redacted>")
+        print(f"  stage {log.get('stage')}: {err}")
 ok &= bool(u.get("success"))
 
 # Wait for the web server
