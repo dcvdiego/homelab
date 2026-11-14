@@ -162,6 +162,11 @@ case "$STACK" in
     files beets /docker/beets
     files tidarr /docker/tidarr '.processing'
     files music-assistant /docker/music-assistant 'cache' ;;
+  forgejo)
+    # SQLite DB, repos, LFS, custom/conf/app.ini: all under /docker/forgejo/data. Stopped so the DB and
+    # the repos match. The runner holds only its registration (re-creatable) and is not copied.
+    stop forgejo
+    files forgejo /docker/forgejo/data 'tmp' 'log' ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;
