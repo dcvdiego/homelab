@@ -45,6 +45,7 @@ credentials or copy them in. Everything goes through Warpgate (LXC 106) or unaut
   stays the source of truth.
 
 Design and threat model: [docs/agent-access.md](docs/agent-access.md).
+Private repo `diego/homelab-private` on Forgejo (`http://git.homelab.lan:3200`): [docs/forgejo-split.md](docs/forgejo-split.md).
 
 ## Topology
 
