@@ -74,7 +74,13 @@ for ip, tok in (("192.168.1.248", os.environ["TECHNITIUM_TOWER_TOKEN"]),
     except Exception as e:
         st = f"error ({e.__class__.__name__})"
     print(f"technitium {ip}: git.homelab.lan -> 192.168.1.248: {st}")
-    ok &= st == "ok"
+    # docker-prod's instance only: a warning, not a stop (its token secret has been rejected since
+    # 2026-11-07; the record is re-added by scripts/technitium-setup.py once the token is replaced).
+    # The agents box resolves through docker-tower (192.168.1.248), so that one must succeed.
+    if ip == "192.168.1.248":
+        ok &= st == "ok"
+    elif st != "ok":
+        print("  WARNING: record missing on 192.168.1.224 (TECHNITIUM_PROD_TOKEN rejected); continuing")
 
 existing = {s["name"] for s in komodo("read", "ListStacks", {"limit": 500})}
 if NAME in existing:
