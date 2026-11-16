@@ -89,6 +89,8 @@ Kinds:
 | `mongo` | komodo | sequential | Komodo's compose runs untagged `mongo`; MongoDB upgrades one major at a time, setting featureCompatibilityVersion after each. | [release notes](https://www.mongodb.com/docs/manual/release-notes/) |
 | `ghcr.io/nikosch86/docker-proxmox-backup-server` | pbs (pbs-pc) | review | Versioned tags `vX.Y.Z-<pbs version>`; it's a backup server. | [README](https://github.com/nikosch86/docker-proxmox-backup-server) |
 | `ghcr.io/actions/actions-runner` | ops (Dockerfile) | batch | Versioned tags; the runner self-updates too. | [releases](https://github.com/actions/runner/releases) |
+| `codeberg.org/forgejo/forgejo` | forgejo | review | Pin the exact release (`X.Y.Z-rootless`; the docs' `17` tag moves). Majors need a backup and manual checks (`forgejo doctor check --all`); downgrades refuse to start, restore the backup instead. LTS is the Q1 release; stable lines get 3 months. | [docker install](https://forgejo.org/docs/latest/admin/installation/docker/), [upgrade](https://forgejo.org/docs/latest/admin/upgrade/) |
+| `data.forgejo.org/forgejo/runner` | forgejo (Dockerfile) | batch | Versioned tags (docs example `:13`); pinned exact. Host executor, no Docker socket. | [runner install](https://forgejo.org/docs/latest/admin/actions/installation/docker/) |
 | `alpine` | pre-deploy backups (`scripts/pre-deploy-backup.sh`) | batch | Helper for tar; any current release. | [Docker Hub](https://hub.docker.com/_/alpine) |
 
 ## Catch-up (state on 2026-10-24)

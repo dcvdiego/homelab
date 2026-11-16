@@ -61,6 +61,7 @@
         "ghcr.io/gethomepage/homepage",
         "alpine",
         "ghcr.io/actions/actions-runner",
+        "data.forgejo.org/forgejo/runner",
         "/^(docker\\.io/(library/)?)?(postgres|redis|mariadb|couchdb|influxdb|memcached|rabbitmq)$/",
         "zulip/zulip-postgresql"
       ],
@@ -93,6 +94,7 @@
         "traefik",
         "ghcr.io/moghtech/komodo-core",
         "ghcr.io/moghtech/komodo-periphery",
+        "codeberg.org/forgejo/forgejo",
         "mongo",
         "ghcr.io/nikosch86/docker-proxmox-backup-server",
         "deluan/navidrome",
@@ -236,6 +238,12 @@
       "sourceUrl": "https://github.com/music-assistant/server",
       "prBodyNotes": ["**Music Assistant**: never switch between the stable and beta channels by changing the tag, and never move or copy the database between channels. Host networking is required for player discovery. Releases: https://github.com/music-assistant/server/releases"]
     },
+    {
+      "matchPackageNames": ["codeberg.org/forgejo/forgejo"],
+      "sourceUrl": "https://codeberg.org/forgejo/forgejo",
+      "prBodyNotes": ["**Forgejo**: majors (X → X+1) need a backup (Komodo pre-deploy does) and a read of the release notes; run `docker exec forgejo forgejo doctor check --all` after. Downgrades refuse to start: the way back is the backup. Stay on `-rootless` tags. Docs: https://forgejo.org/docs/latest/admin/upgrade/, releases: https://codeberg.org/forgejo/forgejo/releases"]
+    },
+    {"matchPackageNames": ["data.forgejo.org/forgejo/runner"], "sourceUrl": "https://code.forgejo.org/forgejo/runner"},
     {
       "matchPackageNames": ["lscr.io/linuxserver/bazarr"],
       "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-ls(?<build>\\d+)$",

@@ -126,6 +126,7 @@ before `compose up`), so nothing is upgraded without a copy.
 | frigate | `/docker/frigate/config` (config.yml, frigate.db; without model_cache) | frigate |
 | nextcloud, zulip, recipes | `pg_dumpall` of the stack's Postgres | — |
 | open-webui | `/docker/open-webui` (without cache) | open-webui |
+| forgejo | `/docker/forgejo/data` (SQLite DB, repos, `app.ini`; without tmp, log). Offsite copy of `homelab-private`: the push mirror to a private GitHub repo (docs/forgejo-split.md) | forgejo |
 | notes | `mariadb-dump` of `notes-db-1` (Vikunja); `/docker/vikunja/files` (attachments, avatars) | notes-vikunja-1 |
 | romm | `mariadb-dump` of `romm-db`; `/docker/romm/assets` (saves, states, uploads), `/docker/romm/config`. Not the ROM library or `/data/romm/resources` (RomM's docs: back the library up separately; resources re-download on a rescan) | romm |
 
