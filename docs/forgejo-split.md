@@ -59,10 +59,12 @@ Same rule as here: propose and stop.
 3. **Renovate** for the private repo: the `renovate` Komodo stack (`docker-compose/renovate`, created by
    `ops/requests/2026-11-17-renovate-forgejo.sh`), `platform: forgejo`, endpoint
    `http://git.homelab.lan:3200/api/v1/`, one repository, Saturdays.
-4. **Repoint Komodo**: add a `[[git_provider]]` for `git.homelab.lan:3200` (`https = false`, account
-   `homelabsito`, read token) to Komodo Core's config and restart Core. Then point the moved stacks at
-   `diego/homelab-private` with the same branch and run directories, and deploy each one. Expect a no-op.
-   Rollback: point them back at GitHub.
+4. **Repoint Komodo** (`ops/requests/2026-11-17-komodo-repoint.sh`): a Komodo git account for
+   `192.168.1.248:3200` (http, `homelabsito`, read-only token), made through the API, so Core's
+   config and a restart aren't needed. The IP rather than `git.homelab.lan` keeps deploys independent
+   of DNS. Every stack whose directory is in `homelab-private` is pointed at it with the same branch,
+   run directory and pre-deploy, and running ones are deployed one at a time (expect a no-op). A
+   failed deploy is pointed back at GitHub on the spot. Rollback: point them back at GitHub.
 5. **Clean up this repo**: remove the moved files and references, then rewrite history. This is the
    only irreversible step, so do it last, on a quiet morning, after a vzdump. Force-pushing doesn't
    remove GitHub's pull-request refs and diff pages, so ask GitHub Support to purge them. Clones made
