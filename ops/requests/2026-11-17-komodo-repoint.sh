@@ -105,7 +105,7 @@ for s in komodo("read", "ListStacks", {}):
 
 # Stopped stacks first (no deploy), then running ones one at a time
 todo.sort(key=lambda t: t[2].lower() in ("running", "unhealthy"))
-for name, sid, state in todo:
+def move(name, sid, state):
     komodo("write", "UpdateStack", {"id": sid, "config": FJ})
     got = komodo("read", "GetStack", {"stack": sid})["config"]
     if any(got.get(k) != v for k, v in FJ.items()):
@@ -123,15 +123,29 @@ for name, sid, state in todo:
     print(f"{name}: compose file read from Forgejo at {info['latest_hash'][:8]}")
     if state.lower() not in ("running", "unhealthy"):
         print(f"{name}: repointed to Forgejo (state {state or 'unknown'}: not deployed)")
-        continue
+        return
     ok, bad = deploy(name)
     if ok:
         print(f"{name}: repointed to Forgejo, deployed: ok")
-        continue
+        return
     print(f"{name}: deploy from Forgejo FAILED (stages: {', '.join(map(str, bad))}); pointing back at GitHub")
     komodo("write", "UpdateStack", {"id": sid, "config": GH})
     ok2, bad2 = deploy(name)
     print(f"{name}: back on GitHub, deployed: {'ok' if ok2 else 'FAILED (stages: ' + ', '.join(map(str, bad2)) + ')'}")
     sys.exit(1)
+
+for name, sid, state in todo:
+    try:
+        move(name, sid, state)
+    except SystemExit:
+        raise
+    except Exception as e:  # API error or timeout after the switch: don't leave it on an unchecked source
+        print(f"{name}: Komodo call failed ({e.__class__.__name__}); pointing back at GitHub")
+        try:
+            komodo("write", "UpdateStack", {"id": sid, "config": GH})
+            print(f"{name}: back on GitHub (not redeployed: check it in Komodo)")
+        except Exception as e2:
+            print(f"{name}: could NOT point back at GitHub ({e2.__class__.__name__}): fix it in Komodo by hand")
+        sys.exit(1)
 print(f"done: {len(todo)} stack(s) moved")
 PY
