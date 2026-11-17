@@ -1,0 +1,30 @@
+# renovate: self-hosted Renovate for diego/homelab-private on Forgejo (docs/forgejo-split.md, phase 3).
+# This repo keeps the Mend GitHub app; this one serves only the Forgejo repo. Runs hourly (as the
+# Renovate docs recommend); the repo's renovate.json schedule keeps PRs to Saturdays, and dashboard
+# checkboxes are picked up within the hour. Stateless: no volume, the cache is rebuilt per container.
+# Created by ops/requests/2026-11-17-renovate-forgejo.sh, which puts RENOVATE_TOKEN (renovate-bot's
+# Forgejo token) in the Komodo stack env. Optional: RENOVATE_GITHUB_COM_TOKEN, a read-only GitHub
+# token for release notes and rate limits; add it in Komodo.
+services:
+  renovate:
+    image: ghcr.io/renovatebot/renovate:44.224.2@sha256:7df5d8d1ebbaa61a875ae34a1a4625c41fc1c29fad70a76ca5d670794672b344
+    container_name: renovate
+    restart: unless-stopped
+    command: ["bash", "-c", "while :; do renovate || echo \"renovate exited $$?\"; sleep 3600; done"]
+    environment:
+      - RENOVATE_PLATFORM=forgejo
+      - RENOVATE_ENDPOINT=http://git.homelab.lan:3200/api/v1/
+      - RENOVATE_TOKEN=${RENOVATE_TOKEN:?set in the Komodo stack env}
+      - RENOVATE_GITHUB_COM_TOKEN=${RENOVATE_GITHUB_COM_TOKEN:-}
+      - RENOVATE_REPOSITORIES=diego/homelab-private
+      - RENOVATE_GIT_AUTHOR=Renovate Bot <renovate-bot@homelab.lan>
+      - RENOVATE_ONBOARDING=false        # the repo already has renovate.json
+      - RENOVATE_REQUIRE_CONFIG=required
+      - LOG_LEVEL=info
+    extra_hosts:
+      # docker-tower resolves through 1.1.1.1, which doesn't know homelab.lan
+      - "git.homelab.lan:192.168.1.248"
+    mem_limit: 2g
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]

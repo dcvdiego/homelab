@@ -290,6 +290,9 @@
     "data.forgejo.org/forgejo/runner": {
       "link": "https://code.forgejo.org/forgejo/runner/releases"
     },
+    "ghcr.io/renovatebot/renovate": {
+      "github": "renovatebot/renovate"
+    },
     "mongo": {
       "link": "https://www.mongodb.com/docs/manual/release-notes/"
     },
