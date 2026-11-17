@@ -79,7 +79,7 @@ Fixed by:
   it: removing it re-breaks Technitium on the next restart.
 - Re-authenticating docker-prod in Tailscale and starting the container.
 
-Monitoring (Uptime Kuma, group **DNS**, from `scripts/uptime-kuma-monitors.py`):
+Monitoring (Uptime Kuma, group **DNS**, from `scripts/uptime-kuma-monitors.py` in the private repo):
 
 | Monitor | What it proves |
 |---|---|

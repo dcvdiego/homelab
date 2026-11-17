@@ -42,16 +42,8 @@ RECORDS = [
     ("influxdb",        "192.168.1.224"),
 
     # --- Media (docker-prod) ---
+    # (records of the private repo's stacks: its docs/dns.md)
     ("immich",          "192.168.1.224"),
-    ("navidrome",       "192.168.1.224"),
-    ("tidarr",          "192.168.1.224"),
-    ("mass",            "192.168.1.224"),
-    ("jellyseerr",      "192.168.1.224"),
-    ("sonarr",          "192.168.1.224"),
-    ("radarr",          "192.168.1.224"),
-    ("prowlarr",        "192.168.1.224"),
-    ("bazarr",          "192.168.1.224"),
-    ("readarr",         "192.168.1.224"),
 
     # --- Apps (docker-prod) ---
     ("authentik",       "192.168.1.224"),

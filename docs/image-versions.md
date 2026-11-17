@@ -53,8 +53,7 @@ Kinds:
 | `ghcr.io/open-webui/open-webui` | open-webui | review | Pin `vX.Y.Z` (never `:main`), read release notes, back up before every update. | [updating](https://docs.openwebui.com/getting-started/updating) |
 | `ollama/ollama` | open-webui | batch | Versioned tags. | [Docker Hub](https://hub.docker.com/r/ollama/ollama) |
 | `vikunja/vikunja` | notes | review | Examples untagged; changelog lists breaking changes. | [docker example](https://vikunja.io/docs/full-docker-example/), [changelog](https://vikunja.io/changelog) |
-| `mariadb` | notes, romm | db | Vikunja's example uses `mariadb:10`; 10.11 is the LTS line. RomM's database docs use `mariadb:11` (needs ≥ 10.11); pinned to the 11.8 LTS line. | [docker example](https://vikunja.io/docs/full-docker-example/), [RomM databases](https://docs.romm.app/latest/install/databases/) |
-| `rommapp/romm` | romm | review | Reference compose uses `latest`; versioned tags `X.Y.Z` (full image, `-slim` without in-browser players) are published. Migrations run at startup; back up the DB, `/romm/assets` and `/romm/config` before updating. | [quick start](https://docs.romm.app/latest/getting-started/quick-start/), [image variants](https://docs.romm.app/latest/install/image-variants/), [backup](https://docs.romm.app/latest/install/backup-and-restore/) |
+| `mariadb` | notes | db | Vikunja's example uses `mariadb:10`; 10.11 is the LTS line. | [docker example](https://vikunja.io/docs/full-docker-example/) |
 | `couchdb` | notes | db | Obsidian LiveSync needs CouchDB 3.x. | [Docker Hub](https://hub.docker.com/_/couchdb) |
 | `technitium/dns-server` | network | review | Docs show `latest`; versioned tags published. DNS for the LAN: read the changelog. | [Docker Hub](https://hub.docker.com/r/technitium/dns-server) |
 | `cloudflare/cloudflared` | network | review | Calendar-versioned tags; keep within Cloudflare's supported window (about a year). | [Docker Hub](https://hub.docker.com/r/cloudflare/cloudflared) |
@@ -70,20 +69,7 @@ Kinds:
 | `telegraf` | monitoring | batch | Versioned tags. | [Docker Hub](https://hub.docker.com/_/telegraf) |
 | `influxdb` | monitoring | db | `latest` still means 2.x; InfluxDB 3 is a separate product, so Renovate is held below 3. | [Docker Hub](https://hub.docker.com/_/influxdb) |
 | `louislam/uptime-kuma` | monitoring | batch | Major tag `2` in docs; pinned exact. | [README](https://github.com/louislam/uptime-kuma) |
-| `ghcr.io/hotio/radarr` | servarr | batch | `release` channel; versioned `release-X.Y.Z.B` tags. | [hotio](https://hotio.dev/containers/radarr/) |
-| `ghcr.io/hotio/sonarr` | servarr | batch | As radarr. | [hotio](https://hotio.dev/containers/sonarr/) |
-| `ghcr.io/hotio/prowlarr` | servarr | batch | As radarr. | [hotio](https://hotio.dev/containers/prowlarr/) |
-| `ghcr.io/hotio/sabnzbd` | servarr | batch | `release-X.Y.Z` tags. | [hotio](https://hotio.dev/containers/sabnzbd/) |
-| `lscr.io/linuxserver/bazarr` | servarr | batch | linuxserver tags `vX.Y.Z-lsN`. | [linuxserver](https://docs.linuxserver.io/images/docker-bazarr/) |
-| `lscr.io/linuxserver/readarr` | servarr | off | Project retired June 2025, image archived. Remove or replace. | [deprecation](https://github.com/linuxserver/docker-readarr) |
-| `ghcr.io/seerr-team/seerr` | servarr | batch | Versioned tags `vX.Y.Z`. | [docs](https://docs.seerr.dev/getting-started/docker/) |
-| `cy01/blackhole` | servarr | batch | Versioned tags `vX.Y`. | [Docker Hub](https://hub.docker.com/r/cy01/blackhole) |
-| `deluan/navidrome` | music | review | Versioned tags; upgrades can carry config and plugin changes (0.63 reworked the plugin API: plugins must be reinstalled). `/docker/navidrome` is backed up by the Komodo pre-deploy. | [docker](https://www.navidrome.org/docs/installation/docker/), [releases](https://github.com/navidrome/navidrome/releases) |
-| `cstaelen/tidarr` | music | review | Single maintainer: read the release notes of every version in between (1.2.2 renamed `DOWNLOAD_BATCH_CRON` → `DOWNLOAD_BATCH_DELAY`). Keep Tidal download batches conservative. | [README](https://github.com/cstaelen/tidarr), [releases](https://github.com/cstaelen/tidarr/releases) |
-| `ghcr.io/music-assistant/server` | music | review | Never switch stable ↔ beta by tag or move the database between channels; the container requires host networking. | [installation](https://www.music-assistant.io/installation/), [releases](https://github.com/music-assistant/server/releases) |
-| `lscr.io/linuxserver/beets` | music | batch | linuxserver tags `X.Y.Z-lsN`. | [linuxserver](https://docs.linuxserver.io/images/docker-beets/) |
 | `bugattiguy527/termix` | dev | batch | Tags `X.Y.Z` (older `release-X.Y.Z`). | [README](https://github.com/Termix-SSH/Termix) |
-| `ghcr.io/gethomepage/homepage` | homepage | batch | Versioned tags `vX.Y.Z`. | [install](https://gethomepage.dev/installation/docker/) |
 | `ghcr.io/moghtech/komodo-core` | komodo | review | Upstream compose uses major tag `2`; Core and Periphery on the same version (grouped PR). Not a Komodo stack: deploy by hand (below). | [setup](https://komo.do/docs/setup/mongo) |
 | `ghcr.io/moghtech/komodo-periphery` | komodo-periphery | review | As komodo-core. | [setup](https://komo.do/docs/setup/connect-servers) |
 | `mongo` | komodo | sequential | Komodo's compose runs untagged `mongo`; MongoDB upgrades one major at a time, setting featureCompatibilityVersion after each. | [release notes](https://www.mongodb.com/docs/manual/release-notes/) |
@@ -107,11 +93,9 @@ its own PR (Renovate opens most of them), merged in order:
    update the phone apps first). Then delete the `allow_drift` entries in `scripts/image-policy.json`.
 4. **Strapi's database** (`backend_cms`): `postgres:12.0-alpine` is end of life; dump, move to a supported
    major, restore.
-5. **Readarr**: retired upstream; remove it or pick a replacement.
-6. **cloudflared 2024.10.1**: outside Cloudflare's support window; update (Renovate's first review PR).
-7. **OpenThread Border Router**: pinned to the running build `sha-57d556f`. Renovate only understands the
+5. **cloudflared 2024.10.1**: outside Cloudflare's support window; update (Renovate's first review PR).
+6. **OpenThread Border Router**: pinned to the running build `sha-57d556f`. Renovate only understands the
    monthly `vYYYY.MM.x` tags, so move it to one by hand once (next haos change).
-8. **servarr** apps are ~21 months behind; the weekly batch catches them up (Radarr 5 → 6 is a major PR).
 
 ## Komodo itself
 

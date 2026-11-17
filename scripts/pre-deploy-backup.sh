@@ -145,23 +145,6 @@ case "$STACK" in
     stop notes-vikunja-1
     mariadb notes-db-1
     files vikunja-files /docker/vikunja/files ;;
-  romm)
-    # What RomM's backup docs call critical: the DB, /romm/assets (saves, states), /romm/config.
-    # The ROM library and re-downloadable resources (/data/romm) are not copied. RomM is stopped so
-    # the dump and the saves/states in assets match (same as Vikunja above).
-    stop romm
-    mariadb romm-db
-    files romm-assets /docker/romm/assets
-    files romm-config /docker/romm/config ;;
-  music)
-    # All four stopped for a consistent copy (tidarr writes queue/history JSON mid-download);
-    # the deploy recreates them right after.
-    # First deploy: /docker/tidarr and /docker/music-assistant may not exist yet (files skips).
-    stop navidrome beets music-assistant tidarr
-    files navidrome /docker/navidrome 'cache'
-    files beets /docker/beets
-    files tidarr /docker/tidarr '.processing'
-    files music-assistant /docker/music-assistant 'cache' ;;
   forgejo)
     # SQLite DB, repos, LFS, custom/conf/app.ini: all under /docker/forgejo/data. Stopped so the DB and
     # the repos match. The runner holds only its registration (re-creatable) and is not copied.

@@ -68,7 +68,9 @@ Same rule as here: propose and stop.
 5. **Clean up this repo**: remove the moved files and references, then rewrite history. This is the
    only irreversible step, so do it last, on a quiet morning, after a vzdump. Force-pushing doesn't
    remove GitHub's pull-request refs and diff pages, so ask GitHub Support to purge them. Clones made
-   before the rewrite keep the old history.
+   before the rewrite keep the old history. Shared live config stays generic so it never names a
+   private stack: `scripts/db-dumps.sh` finds MariaDB containers by image, and the CrowdSec whitelist
+   covers any router named `*-access@docker` (behind Cloudflare Access; the private stacks use it).
 6. **Docs**: AGENTS.md and docs/agent-access.md get the private-repo flow and a Forgejo section.
 
 Phases 1–4 only add things: nothing in this repo changes, and the stacks keep deploying from GitHub

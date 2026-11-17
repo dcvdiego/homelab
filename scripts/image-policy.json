@@ -149,9 +149,6 @@
     "zulip/zulip-postgresql": {
       "link": "https://github.com/zulip/docker-zulip#upgrading-zulip-postgresql"
     },
-    "rommapp/romm": {
-      "github": "rommapp/romm"
-    },
     "vikunja/vikunja": {
       "changelog": "https://raw.githubusercontent.com/go-vikunja/vikunja/main/CHANGELOG.md",
       "section": "^## \\[",
@@ -174,9 +171,6 @@
     },
     "ghcr.io/moghtech/komodo-periphery": {
       "github": "moghtech/komodo"
-    },
-    "ghcr.io/gethomepage/homepage": {
-      "github": "gethomepage/homepage"
     },
     "technitium/dns-server": {
       "changelog": "https://raw.githubusercontent.com/TechnitiumSoftware/DnsServer/master/CHANGELOG.md",
@@ -240,42 +234,6 @@
     },
     "devture/exim-relay": {
       "link": "https://github.com/devture/exim-relay/blob/main/CHANGELOG.md"
-    },
-    "ghcr.io/hotio/radarr": {
-      "github": "Radarr/Radarr"
-    },
-    "ghcr.io/hotio/sonarr": {
-      "github": "Sonarr/Sonarr"
-    },
-    "ghcr.io/hotio/prowlarr": {
-      "github": "Prowlarr/Prowlarr"
-    },
-    "ghcr.io/hotio/sabnzbd": {
-      "github": "sabnzbd/sabnzbd"
-    },
-    "lscr.io/linuxserver/bazarr": {
-      "github": "morpheus65535/bazarr"
-    },
-    "lscr.io/linuxserver/readarr": {
-      "link": "https://github.com/Readarr/Readarr (retired upstream)"
-    },
-    "ghcr.io/seerr-team/seerr": {
-      "github": "seerr-team/seerr"
-    },
-    "cy01/blackhole": {
-      "github": "sirrobot01/decypharr"
-    },
-    "deluan/navidrome": {
-      "github": "navidrome/navidrome"
-    },
-    "cstaelen/tidarr": {
-      "github": "cstaelen/tidarr"
-    },
-    "ghcr.io/music-assistant/server": {
-      "github": "music-assistant/server"
-    },
-    "lscr.io/linuxserver/beets": {
-      "github": "beetbox/beets"
     },
     "ghcr.io/nikosch86/docker-proxmox-backup-server": {
       "github": "nikosch86/docker-proxmox-backup-server",

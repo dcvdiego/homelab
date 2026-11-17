@@ -1,11 +1,15 @@
 # Routers whose hostnames sit behind the Cloudflare Access app "private-selfhost" (email allowlist
 # + geo) or "ntfy" (email or service token). The tunnel is the only way in (no port forward on the
 # BT Hub, checked 2026-10-23), so every request on these routers comes from someone who passed
-# Access: behaviour scenarios here can only ban our own users (radarr/prowlarr/sonarr 403 bursts).
+# Access: behaviour scenarios here can only ban our own users (e.g. bursts of 403s from an app's UI).
 #
 # NOT listed, because Access bypasses them for everyone and CrowdSec is their real protection:
 # immich (fotos), vaultwarden (sec), authentik (au), obsidian (notesdb), vikunja (tasks),
-# navidrome (music), homeassistant (ha), zulip (chat).
+# homeassistant (ha), zulip (chat), and some routers of the private repo's stacks.
+#
+# Routers named "<name>-access@docker" are covered by name: that suffix means "behind Access". The
+# private repo's stacks use it, so they're covered without being named here. Give a router that name
+# only if its hostname is behind an Access app with no bypass policy.
 #
 # LAN clients (split DNS) were never covered: crowdsecurity/whitelists drops private ranges.
 # Tailnet clients (100.64.0.0/10) can reach Traefik without Access, so they stay covered.
@@ -17,11 +21,9 @@ whitelist:
   reason: "Cloudflare Access-protected router"
   expression:
     - >-
-      evt.Meta.traefik_router_name in [
-        'bazarr@docker', 'collabora@docker', 'deemix@docker', 'frigate@docker',
-        'grafana@docker', 'jellyseerr@docker', 'nextcloud@docker', 'ntfy@docker',
-        'open-webui@docker', 'prowlarr@docker', 'radarr@docker', 'readarr@docker',
-        'recipes@docker', 'sabnzbd@docker', 'sonarr@docker', 'traefik-dashboard@docker',
-        'uptime@docker', 'zigbee2mqtt@docker',
-        'homepage@file', 'komodo@file', 'termix@file'
-      ] && !IpInRange(evt.Meta.source_ip, '100.64.0.0/10')
+      (evt.Meta.traefik_router_name in [
+        'collabora@docker', 'frigate@docker', 'grafana@docker', 'nextcloud@docker', 'ntfy@docker',
+        'open-webui@docker', 'recipes@docker', 'traefik-dashboard@docker', 'uptime@docker',
+        'zigbee2mqtt@docker', 'homepage@file', 'komodo@file', 'termix@file'
+      ] || evt.Meta.traefik_router_name matches '^[a-z0-9-]+-access@docker$')
+        && !IpInRange(evt.Meta.source_ip, '100.64.0.0/10')
