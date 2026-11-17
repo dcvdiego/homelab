@@ -62,6 +62,7 @@
         "alpine",
         "ghcr.io/actions/actions-runner",
         "data.forgejo.org/forgejo/runner",
+        "ghcr.io/renovatebot/renovate",
         "/^(docker\\.io/(library/)?)?(postgres|redis|mariadb|couchdb|influxdb|memcached|rabbitmq)$/",
         "zulip/zulip-postgresql"
       ],

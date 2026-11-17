@@ -91,6 +91,7 @@ Kinds:
 | `ghcr.io/actions/actions-runner` | ops (Dockerfile) | batch | Versioned tags; the runner self-updates too. | [releases](https://github.com/actions/runner/releases) |
 | `codeberg.org/forgejo/forgejo` | forgejo | review | Pin the exact release (`X.Y.Z-rootless`; the docs' `17` tag moves). Majors need a backup and manual checks (`forgejo doctor check --all`); downgrades refuse to start, restore the backup instead. LTS is the Q1 release; stable lines get 3 months. | [docker install](https://forgejo.org/docs/latest/admin/installation/docker/), [upgrade](https://forgejo.org/docs/latest/admin/upgrade/) |
 | `data.forgejo.org/forgejo/runner` | forgejo (Dockerfile) | batch | Versioned tags (docs example `:13`); pinned exact. Host executor, no Docker socket. | [runner install](https://forgejo.org/docs/latest/admin/actions/installation/docker/) |
+| `ghcr.io/renovatebot/renovate` | renovate | batch | Semver tags; docs run the default (not `-full`) image, which installs tools at runtime. Minors and patches weekly; majors as their own PR. | [running Renovate](https://docs.renovatebot.com/getting-started/running/) |
 | `alpine` | pre-deploy backups (`scripts/pre-deploy-backup.sh`) | batch | Helper for tar; any current release. | [Docker Hub](https://hub.docker.com/_/alpine) |
 
 ## Catch-up (state on 2026-10-24)

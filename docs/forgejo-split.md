@@ -56,7 +56,8 @@ Same rule as here: propose and stop.
 2. **Seed `homelab-private`**: one trim commit on top of the copied history, keeping only the moved
    stacks plus their CI scaffolding (scripts, Renovate config, image docs, `AGENTS.md`). Opened as a PR
    by `homelabsito`, merged by you.
-3. **Renovate** for the private repo: a Komodo stack, `platform: forgejo`, endpoint
+3. **Renovate** for the private repo: the `renovate` Komodo stack (`docker-compose/renovate`, created by
+   `ops/requests/2026-11-17-renovate-forgejo.sh`), `platform: forgejo`, endpoint
    `http://git.homelab.lan:3200/api/v1/`, one repository, Saturdays.
 4. **Repoint Komodo**: add a `[[git_provider]]` for `git.homelab.lan:3200` (`https = false`, account
    `homelabsito`, read token) to Komodo Core's config and restart Core. Then point the moved stacks at
