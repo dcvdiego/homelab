@@ -145,23 +145,6 @@ case "$STACK" in
     stop notes-vikunja-1
     mariadb notes-db-1
     files vikunja-files /docker/vikunja/files ;;
-  REDACTED)
-    # What REDACTED's backup docs call critical: the DB, /REDACTED/assets (saves, states), /REDACTED/config.
-    # The ROM library and re-downloadable resources (/data/REDACTED) are not copied. REDACTED is stopped so
-    # the dump and the saves/states in assets match (same as Vikunja above).
-    stop REDACTED
-    mariadb REDACTED-db
-    files REDACTED-assets /docker/REDACTED/assets
-    files REDACTED-config /docker/REDACTED/config ;;
-  REDACTED)
-    # All four stopped for a consistent copy (REDACTED writes queue/history JSON mid-download);
-    # the deploy recreates them right after.
-    # First deploy: /docker/REDACTED and /docker/REDACTED may not exist yet (files skips).
-    stop REDACTED REDACTED REDACTED REDACTED
-    files REDACTED /docker/REDACTED 'cache'
-    files REDACTED /docker/REDACTED
-    files REDACTED /docker/REDACTED '.processing'
-    files REDACTED /docker/REDACTED 'cache' ;;
   forgejo)
     # SQLite DB, repos, LFS, custom/conf/app.ini: all under /docker/forgejo/data. Stopped so the DB and
     # the repos match. The runner holds only its registration (re-creatable) and is not copied.

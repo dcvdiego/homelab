@@ -39,8 +39,8 @@ scheduled procedures, update detection, alerting and free OIDC.
 | Portainer endpoint | Host | Stacks |
 |---|---|---|
 | 2 `local` | docker-tower (LXC 104) | homepage, network |
-| 3 `prod` | docker-prod (LXC 101) | backend_cms, crowdsec, REDACTED, dev, frigate, haos, matter-hub, monitoring, network, nextcloud, notes, open-webui, photos, recipes, security, REDACTED, smtp-relay, traefik, zulip |
-| 4 `dev` | docker-dev (LXC 102, **stopped**) | mc, network, REDACTED, tandoor |
+| 3 `prod` | docker-prod (LXC 101) | backend_cms, crowdsec, dev, frigate, haos, matter-hub, monitoring, network, nextcloud, notes, open-webui, photos, recipes, security, smtp-relay, private stacks, traefik, zulip |
+| 4 `dev` | docker-dev (LXC 102, **stopped**) | mc, network, tandoor, a private stack |
 | 5 (endpoint no longer exists) | — | cloudflare-tunnel (orphan record) |
 
 - 26 stacks: 5 git-backed, 21 web-editor. **Every live compose file is now in
@@ -121,7 +121,7 @@ auditor token can't list snapshots, so restorability is unverified.
 
 Order (lowest risk → critical, one host at a time):
 1. docker-tower: `homepage`
-2. docker-prod non-critical: `dev`, `backend_cms`, `REDACTED`, `smtp-relay`, `open-webui`, `recipes`, `notes`, `zulip`, `nextcloud`, `REDACTED`, `crowdsec`, `monitoring`, `frigate`
+2. docker-prod non-critical: `dev`, `backend_cms`, `smtp-relay`, `open-webui`, `recipes`, `notes`, `zulip`, `nextcloud`, private stacks, `crowdsec`, `monitoring`, `frigate`
 3. Infra: `traefik`, `network` (both hosts)
 4. Critical (after Phase 0 dumps are verified): `matter-hub`, `haos`, `security` (vaultwarden + authentik), `photos` (immich)
 
@@ -144,7 +144,7 @@ Rollback for any stack: redeploy it from Portainer (still running, still has its
 - **Procedure "weekly-image-prune"** on both servers: removes unused images — keeps disk flat now
   that rollback relies on pinned tags instead of old images.
 - **Alerter → Discord**: server disk/mem/CPU thresholds, container unexpectedly stopped, image update available.
-- **Auto-update**: only non-critical stacks (REDACTED, open-webui, …). Critical stacks: notify only, update by bumping the pin.
+- **Auto-update**: only non-critical stacks (open-webui, …). Critical stacks: notify only, update by bumping the pin.
 - Update AGENTS.md access table: Komodo API / `km` CLI replaces the Portainer API.
 
 ## Phase 6 — Decommission Portainer

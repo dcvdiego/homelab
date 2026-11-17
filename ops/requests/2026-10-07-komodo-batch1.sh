@@ -4,6 +4,6 @@
 # so homepage is recreated once). Undo per stack: delete it in Komodo; Portainer still has the record.
 python3 ops/bin/komodo-migrate.py migrate \
   dev@docker-prod backend_cms@docker-prod smtp-relay@docker-prod open-webui@docker-prod \
-  recipes@docker-prod notes@docker-prod zulip@docker-prod nextcloud@docker-prod REDACTED@docker-prod \
-  REDACTED@docker-prod frigate@docker-prod monitoring@docker-prod ntfy@docker-prod crowdsec@docker-prod \
+  recipes@docker-prod notes@docker-prod zulip@docker-prod nextcloud@docker-prod \
+  frigate@docker-prod monitoring@docker-prod ntfy@docker-prod crowdsec@docker-prod \
   homepage@docker-tower+drift

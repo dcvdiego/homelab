@@ -80,4 +80,4 @@ collie start                             # pick herdr; then collie pair on the p
   `npm_args = "--ignore-scripts=false"` for that one package: its postinstall links the native
   binary, and mise's default installer skips lifecycle scripts.
 - An old `cloudflared-tunnel` container auto-started on first boot and was removed with the other
-  docker-dev containers (mc, REDACTED, tandoor, portainer agent). Portainer endpoint 4 is retired.
+  docker-dev containers (mc, tandoor, a private stack, portainer agent). Portainer endpoint 4 is retired.

@@ -149,9 +149,6 @@
     "zulip/zulip-postgresql": {
       "link": "https://github.com/zulip/docker-zulip#upgrading-zulip-postgresql"
     },
-    "REDACTEDapp/REDACTED": {
-      "github": "REDACTEDapp/REDACTED"
-    },
     "vikunja/vikunja": {
       "changelog": "https://raw.githubusercontent.com/go-vikunja/vikunja/main/CHANGELOG.md",
       "section": "^## \\[",
@@ -174,9 +171,6 @@
     },
     "ghcr.io/moghtech/komodo-periphery": {
       "github": "moghtech/komodo"
-    },
-    "ghcr.io/gethomepage/homepage": {
-      "github": "gethomepage/homepage"
     },
     "technitium/dns-server": {
       "changelog": "https://raw.githubusercontent.com/TechnitiumSoftware/DnsServer/master/CHANGELOG.md",
@@ -240,42 +234,6 @@
     },
     "devture/exim-relay": {
       "link": "https://github.com/devture/exim-relay/blob/main/CHANGELOG.md"
-    },
-    "ghcr.io/hotio/REDACTED": {
-      "github": "REDACTED/REDACTED"
-    },
-    "ghcr.io/hotio/REDACTED": {
-      "github": "REDACTED/REDACTED"
-    },
-    "ghcr.io/hotio/REDACTED": {
-      "github": "REDACTED/REDACTED"
-    },
-    "ghcr.io/hotio/REDACTED": {
-      "github": "REDACTED/REDACTED"
-    },
-    "lscr.io/linuxserver/REDACTED": {
-      "github": "morpheus65535/REDACTED"
-    },
-    "lscr.io/linuxserver/REDACTED": {
-      "link": "https://github.com/REDACTED/REDACTED (retired upstream)"
-    },
-    "ghcr.io/REDACTED-team/REDACTED": {
-      "github": "REDACTED-team/REDACTED"
-    },
-    "REDACTED/REDACTED": {
-      "github": "sirrobot01/decypharr"
-    },
-    "deluan/REDACTED": {
-      "github": "REDACTED/REDACTED"
-    },
-    "cstaelen/REDACTED": {
-      "github": "cstaelen/REDACTED"
-    },
-    "ghcr.io/REDACTED/server": {
-      "github": "REDACTED/server"
-    },
-    "lscr.io/linuxserver/REDACTED": {
-      "github": "beetbox/REDACTED"
     },
     "ghcr.io/nikosch86/docker-proxmox-backup-server": {
       "github": "nikosch86/docker-proxmox-backup-server",

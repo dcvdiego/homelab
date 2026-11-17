@@ -98,7 +98,8 @@ ntfy runs on docker-prod (`docker-compose/ntfy`), topic `homelab`, `auth-default
 `scripts/db-dumps.sh` (installed at `/docker/scripts/db-dumps.sh` in CT 101, root-only):
 
 - Postgres (`security-postgresql-1`, `tandoor-db`, `nextcloud-db`, `zulip-database`, `strapiDB`):
-  `pg_dumpall` inside each container. MariaDB (`notes-db-1`, `REDACTED-db`): `mariadb-dump --all-databases
+  `pg_dumpall` inside each container. MariaDB (every container from the `mariadb` image, found by image, so also the private repo's
+  stacks'): `mariadb-dump --all-databases
   --single-transaction`. CouchDB (`obsidian-livesync`): `_all_docs?include_docs=true&attachments=true` per DB.
 - Credentials come from each container's own environment, inside the container.
 - A dump counts only if it is valid gzip, non-empty and ends with the tool's completion marker.
@@ -128,7 +129,6 @@ before `compose up`), so nothing is upgraded without a copy.
 | open-webui | `/docker/open-webui` (without cache) | open-webui |
 | forgejo | `/docker/forgejo/data` (SQLite DB, repos, `app.ini`; without tmp, log). Offsite copy of `homelab-private`: the push mirror to a private GitHub repo (docs/forgejo-split.md) | forgejo |
 | notes | `mariadb-dump` of `notes-db-1` (Vikunja); `/docker/vikunja/files` (attachments, avatars) | notes-vikunja-1 |
-| REDACTED | `mariadb-dump` of `REDACTED-db`; `/docker/REDACTED/assets` (saves, states, uploads), `/docker/REDACTED/config`. Not the ROM library or `/data/REDACTED/resources` (REDACTED's docs: back the library up separately; resources re-download on a rescan) | REDACTED |
 
 - Where: `/etc/komodo/pre-deploy-backups/<stack>/<timestamp>/` on the Docker host, newest 3 per stack.
   The host rootfs is in the vzdump jobs, so they reach PBS too. Sizes today: a few MB to ~900 MB

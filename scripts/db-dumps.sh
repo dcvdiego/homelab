@@ -59,9 +59,11 @@ for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database strapiDB; 
   finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'PostgreSQL database cluster dump complete' 5
 done
 
-# MariaDB (notes: Vikunja, REDACTED: REDACTED): password passed via MYSQL_PWD inside the container, not on
-# argv. The root password env var is MARIADB_ROOT_PASSWORD (REDACTED) or the older MYSQL_ROOT_PASSWORD (notes).
-for c in notes-db-1 REDACTED-db; do
+# MariaDB: every container from the mariadb image, running or not, so stacks from either repo are
+# covered without naming them here (a stopped one fails its dump and alerts, as a named one did).
+# Password passed via MYSQL_PWD inside the container, not on argv. The root password env var is
+# MARIADB_ROOT_PASSWORD or the older MYSQL_ROOT_PASSWORD.
+for c in $(docker ps -a --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^(docker\.io\/(library\/)?)?mariadb[:@]/ {print $1}' | sort); do
   f="$OUT/$c-$STAMP.sql.gz"
   docker exec "$c" sh -c 'D=$(command -v mariadb-dump || command -v mysqldump); MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" "$D" -uroot --all-databases --single-transaction --routines --events' \
     2>>"$OUT/.errors.log" | gzip > "$f.tmp"

@@ -53,8 +53,7 @@ Kinds:
 | `ghcr.io/open-webui/open-webui` | open-webui | review | Pin `vX.Y.Z` (never `:main`), read release notes, back up before every update. | [updating](https://docs.openwebui.com/getting-started/updating) |
 | `ollama/ollama` | open-webui | batch | Versioned tags. | [Docker Hub](https://hub.docker.com/r/ollama/ollama) |
 | `vikunja/vikunja` | notes | review | Examples untagged; changelog lists breaking changes. | [docker example](https://vikunja.io/docs/full-docker-example/), [changelog](https://vikunja.io/changelog) |
-| `mariadb` | notes, REDACTED | db | Vikunja's example uses `mariadb:10`; 10.11 is the LTS line. REDACTED's database docs use `mariadb:11` (needs ≥ 10.11); pinned to the 11.8 LTS line. | [docker example](https://vikunja.io/docs/full-docker-example/), [REDACTED databases](https://docs.REDACTED.app/latest/install/databases/) |
-| `REDACTEDapp/REDACTED` | REDACTED | review | Reference compose uses `latest`; versioned tags `X.Y.Z` (full image, `-slim` without in-browser players) are published. Migrations run at startup; back up the DB, `/REDACTED/assets` and `/REDACTED/config` before updating. | [quick start](https://docs.REDACTED.app/latest/getting-started/quick-start/), [image variants](https://docs.REDACTED.app/latest/install/image-variants/), [backup](https://docs.REDACTED.app/latest/install/backup-and-restore/) |
+| `mariadb` | notes | db | Vikunja's example uses `mariadb:10`; 10.11 is the LTS line. | [docker example](https://vikunja.io/docs/full-docker-example/) |
 | `couchdb` | notes | db | Obsidian LiveSync needs CouchDB 3.x. | [Docker Hub](https://hub.docker.com/_/couchdb) |
 | `technitium/dns-server` | network | review | Docs show `latest`; versioned tags published. DNS for the LAN: read the changelog. | [Docker Hub](https://hub.docker.com/r/technitium/dns-server) |
 | `cloudflare/cloudflared` | network | review | Calendar-versioned tags; keep within Cloudflare's supported window (about a year). | [Docker Hub](https://hub.docker.com/r/cloudflare/cloudflared) |
@@ -70,20 +69,7 @@ Kinds:
 | `telegraf` | monitoring | batch | Versioned tags. | [Docker Hub](https://hub.docker.com/_/telegraf) |
 | `influxdb` | monitoring | db | `latest` still means 2.x; InfluxDB 3 is a separate product, so Renovate is held below 3. | [Docker Hub](https://hub.docker.com/_/influxdb) |
 | `louislam/uptime-kuma` | monitoring | batch | Major tag `2` in docs; pinned exact. | [README](https://github.com/louislam/uptime-kuma) |
-| `ghcr.io/hotio/REDACTED` | REDACTED | batch | `release` channel; versioned `release-X.Y.Z.B` tags. | [hotio](https://hotio.dev/containers/REDACTED/) |
-| `ghcr.io/hotio/REDACTED` | REDACTED | batch | As REDACTED. | [hotio](https://hotio.dev/containers/REDACTED/) |
-| `ghcr.io/hotio/REDACTED` | REDACTED | batch | As REDACTED. | [hotio](https://hotio.dev/containers/REDACTED/) |
-| `ghcr.io/hotio/REDACTED` | REDACTED | batch | `release-X.Y.Z` tags. | [hotio](https://hotio.dev/containers/REDACTED/) |
-| `lscr.io/linuxserver/REDACTED` | REDACTED | batch | linuxserver tags `vX.Y.Z-lsN`. | [linuxserver](https://docs.linuxserver.io/images/docker-REDACTED/) |
-| `lscr.io/linuxserver/REDACTED` | REDACTED | off | Project retired June 2025, image archived. Remove or replace. | [deprecation](https://github.com/linuxserver/docker-REDACTED) |
-| `ghcr.io/REDACTED-team/REDACTED` | REDACTED | batch | Versioned tags `vX.Y.Z`. | [docs](https://docs.REDACTED.dev/getting-started/docker/) |
-| `REDACTED/REDACTED` | REDACTED | batch | Versioned tags `vX.Y`. | [Docker Hub](https://hub.docker.com/r/REDACTED/REDACTED) |
-| `deluan/REDACTED` | REDACTED | review | Versioned tags; upgrades can carry config and plugin changes (0.63 reworked the plugin API: plugins must be reinstalled). `/docker/REDACTED` is backed up by the Komodo pre-deploy. | [docker](https://www.REDACTED.org/docs/installation/docker/), [releases](https://github.com/REDACTED/REDACTED/releases) |
-| `cstaelen/REDACTED` | REDACTED | review | Single maintainer: read the release notes of every version in between (1.2.2 renamed `DOWNLOAD_BATCH_CRON` → `DOWNLOAD_BATCH_DELAY`). Keep Tidal download batches conservative. | [README](https://github.com/cstaelen/REDACTED), [releases](https://github.com/cstaelen/REDACTED/releases) |
-| `ghcr.io/REDACTED/server` | REDACTED | review | Never switch stable ↔ beta by tag or move the database between channels; the container requires host networking. | [installation](https://www.REDACTED.io/installation/), [releases](https://github.com/REDACTED/server/releases) |
-| `lscr.io/linuxserver/REDACTED` | REDACTED | batch | linuxserver tags `X.Y.Z-lsN`. | [linuxserver](https://docs.linuxserver.io/images/docker-REDACTED/) |
 | `bugattiguy527/termix` | dev | batch | Tags `X.Y.Z` (older `release-X.Y.Z`). | [README](https://github.com/Termix-SSH/Termix) |
-| `ghcr.io/gethomepage/homepage` | homepage | batch | Versioned tags `vX.Y.Z`. | [install](https://gethomepage.dev/installation/docker/) |
 | `ghcr.io/moghtech/komodo-core` | komodo | review | Upstream compose uses major tag `2`; Core and Periphery on the same version (grouped PR). Not a Komodo stack: deploy by hand (below). | [setup](https://komo.do/docs/setup/mongo) |
 | `ghcr.io/moghtech/komodo-periphery` | komodo-periphery | review | As komodo-core. | [setup](https://komo.do/docs/setup/connect-servers) |
 | `mongo` | komodo | sequential | Komodo's compose runs untagged `mongo`; MongoDB upgrades one major at a time, setting featureCompatibilityVersion after each. | [release notes](https://www.mongodb.com/docs/manual/release-notes/) |
@@ -107,11 +93,9 @@ its own PR (Renovate opens most of them), merged in order:
    update the phone apps first). Then delete the `allow_drift` entries in `scripts/image-policy.json`.
 4. **Strapi's database** (`backend_cms`): `postgres:12.0-alpine` is end of life; dump, move to a supported
    major, restore.
-5. **REDACTED**: retired upstream; remove it or pick a replacement.
-6. **cloudflared 2024.10.1**: outside Cloudflare's support window; update (Renovate's first review PR).
-7. **OpenThread Border Router**: pinned to the running build `sha-57d556f`. Renovate only understands the
+5. **cloudflared 2024.10.1**: outside Cloudflare's support window; update (Renovate's first review PR).
+6. **OpenThread Border Router**: pinned to the running build `sha-57d556f`. Renovate only understands the
    monthly `vYYYY.MM.x` tags, so move it to one by hand once (next haos change).
-8. **REDACTED** apps are ~21 months behind; the weekly batch catches them up (REDACTED 5 → 6 is a major PR).
 
 ## Komodo itself
 
