@@ -2,16 +2,19 @@
 #
 # 1. Komodo git account for Forgejo (CreateGitProviderAccount; no Core config edit or restart):
 #    domain 192.168.1.248:3200 (an IP, so deploys don't depend on either Technitium), http, user
-#    homelabsito with a read:repository-only token, made here and never printed. Skipped if the
-#    account exists.
+#    homelabsito with a read:repository-only token named "komodo", made here and never printed.
+#    Skipped if the account exists. The fixed name means Forgejo refuses a second one, so a run that
+#    failed after making it stops here instead of piling up tokens (delete the old one in Forgejo).
 # 2. The stacks to move are the ones the private repo has: every docker-compose/<dir> in
-#    diego/homelab-private (read with that token), so this public file names none of them. Each Komodo
+#    diego/homelab-private (read from the bare repo in the container), so this public file names none of them. Each Komodo
 #    stack whose run_directory is one of those and that still deploys from dcvdiego/homelab gets
 #    git_provider/git_https/git_account/repo switched; branch, run directory, files, env and
 #    pre-deploy stay as they are. Running stacks are deployed one at a time (pre-deploy backup
 #    first, as on every deploy) and should come up unchanged. Stopped stacks are only repointed.
-# 3. If a deploy fails, that stack is pointed back at GitHub and deployed again, and the request
-#    stops: the remaining stacks keep deploying from GitHub.
+# 3. Before any deploy, Komodo must read each stack's compose file from Forgejo (RefreshStackCache);
+#    if it can't, that stack goes back to GitHub undeployed and the request stops. If a deploy fails,
+#    that stack is pointed back at GitHub and deployed again, and the request stops: the remaining
+#    stacks keep deploying from GitHub.
 #
 # Undo: for each moved stack, Komodo -> Stacks -> <stack> -> Config: Git provider github.com, https on,
 # account empty, repo dcvdiego/homelab; deploy. Then Settings -> Providers: delete the 192.168.1.248:3200
@@ -42,7 +45,7 @@ echo "== 1. Komodo git account for Forgejo"
 st=0; komodo_has_account || st=$?
 case $st in
   0) echo "komodo account homelabsito@$DOMAIN: exists (left as is)"; KOMODO_FJ_TOKEN= ;;
-  3) KOMODO_FJ_TOKEN=$(FJ admin user generate-access-token -u homelabsito -t "komodo-$(date +%s)" \
+  3) KOMODO_FJ_TOKEN=$(FJ admin user generate-access-token -u homelabsito -t komodo \
                          --scopes read:repository --raw 2>/dev/null) || KOMODO_FJ_TOKEN=
      [ -n "$KOMODO_FJ_TOKEN" ] || { echo "homelabsito read token: FAILED"; exit 1; } ;;
   *) echo "komodo: cannot list git accounts"; exit 1 ;;
@@ -108,6 +111,16 @@ for name, sid, state in todo:
     if any(got.get(k) != v for k, v in FJ.items()):
         komodo("write", "UpdateStack", {"id": sid, "config": GH})
         sys.exit(f"{name}: config reads back different; pointed back at GitHub, stopping")
+    # Core fetches the compose file through the new account first: a bad account stops here, before
+    # any deploy (and before pre-deploy backups stop anything)
+    komodo("write", "RefreshStackCache", {"stack": sid}, timeout=300)
+    info = komodo("read", "GetStack", {"stack": sid}).get("info") or {}
+    if info.get("remote_errors") or not info.get("remote_contents") or not info.get("latest_hash"):
+        komodo("write", "UpdateStack", {"id": sid, "config": GH})
+        komodo("write", "RefreshStackCache", {"stack": sid}, timeout=300)
+        sys.exit(f"{name}: Komodo cannot read the compose file from Forgejo ({len(info.get('remote_errors') or [])} "
+                 "error(s)); pointed back at GitHub, nothing deployed, stopping")
+    print(f"{name}: compose file read from Forgejo at {info['latest_hash'][:8]}")
     if state.lower() not in ("running", "unhealthy"):
         print(f"{name}: repointed to Forgejo (state {state or 'unknown'}: not deployed)")
         continue
