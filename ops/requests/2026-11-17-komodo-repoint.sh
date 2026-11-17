@@ -101,16 +101,19 @@ for s in komodo("read", "ListStacks", {}):
     if cfg.get("repo") != GH["repo"] or cfg.get("git_provider") != GH["git_provider"]:
         print(f"{s['name']}: deploys from {cfg.get('git_provider')}/{cfg.get('repo')}, not public GitHub: left as is")
         continue
-    todo.append((s["name"], s["id"], (s.get("info") or {}).get("state", "")))
+    todo.append((s["name"], s["id"], (s.get("info") or {}).get("state", ""), cfg))
 
 # Stopped stacks first (no deploy), then running ones one at a time
 todo.sort(key=lambda t: t[2].lower() in ("running", "unhealthy"))
-def move(name, sid, state):
+KEEP = ("branch", "run_directory", "file_paths", "env_file_path", "environment", "pre_deploy", "server_id")
+
+def move(name, sid, state, before):
+    # UpdateStack merges partial configs (komodo_client docs); the read-back checks that too
     komodo("write", "UpdateStack", {"id": sid, "config": FJ})
     got = komodo("read", "GetStack", {"stack": sid})["config"]
-    if any(got.get(k) != v for k, v in FJ.items()):
-        komodo("write", "UpdateStack", {"id": sid, "config": GH})
-        sys.exit(f"{name}: config reads back different; pointed back at GitHub, stopping")
+    if any(got.get(k) != v for k, v in FJ.items()) or any(got.get(k) != before.get(k) for k in KEEP):
+        komodo("write", "UpdateStack", {"id": sid, "config": before})
+        sys.exit(f"{name}: config reads back different; original config restored, stopping")
     # Core fetches the compose file through the new account first: a bad account stops here, before
     # any deploy (and before pre-deploy backups stop anything)
     komodo("write", "RefreshStackCache", {"stack": sid}, timeout=300)
@@ -134,9 +137,9 @@ def move(name, sid, state):
     print(f"{name}: back on GitHub, deployed: {'ok' if ok2 else 'FAILED (stages: ' + ', '.join(map(str, bad2)) + ')'}")
     sys.exit(1)
 
-for name, sid, state in todo:
+for name, sid, state, before in todo:
     try:
-        move(name, sid, state)
+        move(name, sid, state, before)
     except SystemExit:
         raise
     except Exception as e:  # API error or timeout after the switch: don't leave it on an unchecked source
