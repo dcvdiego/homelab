@@ -75,6 +75,24 @@ with `~/.ssh/warpgate_agent`.
 Setup order: `authorize-targets.sh` → `warpgate-setup.py` → connect once to each target →
 `warpgate-setup.py --lock-host-keys` (unknown host keys rejected from then on).
 
+## Forgejo and the private repo
+
+Since 2026-11-17 some stacks deploy from `diego/homelab-private` on Forgejo (docker-tower, LAN only).
+Design and history: [forgejo-split.md](forgejo-split.md).
+
+| Piece | Stops |
+|---|---|
+| `homelabsito` on Forgejo: write collaborator, `main` push and merge only for `diego` | Agents open PRs there as here; they can't merge or deploy |
+| Its token (`write:repository, write:issue, read:user`) on the agents box only, mode 600 | Same blast radius as the GitHub App: a PR the owner still has to merge |
+| No secrets in Forgejo Actions, no apply workflow | Forgejo's Actions secrets reach any branch's workflows; with none stored, a workflow on an agent's branch has nothing to steal. Deploys go through the Komodo UI |
+| Runner: host executor, no Docker socket, one repo, only the image-policy check | CI on agent branches can't reach root on docker-tower (Komodo Core runs there) |
+| Komodo's git account: `homelabsito`, `read:repository` only | Komodo can read the repo, not change it |
+| Renovate: its own Komodo stack, `renovate-bot` token in the stack env | Its token never reaches Forgejo or a workflow |
+| Push mirror to a private GitHub repo | Forgejo isn't the only copy |
+
+**What's left:** Forgejo is plain HTTP on the LAN, so tokens cross it unencrypted (accepted: LAN
+only, the same trust as the rest of the LAN APIs). Forgejo's admin account `diego` should have 2FA on.
+
 ## Status
 
 Done 2026-10-07:
