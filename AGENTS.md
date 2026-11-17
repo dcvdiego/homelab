@@ -31,6 +31,22 @@ credentials or copy them in. Everything goes through Warpgate (LXC 106) or unaut
    The runner applies it; read the output afterwards with
    `ssh docker-tower-ro cat /docker/ops/results/<run id>/<request>.log`.
 
+### The private repo (Forgejo)
+
+Some stacks live in **`diego/homelab-private`** on Forgejo, not here
+([docs/forgejo-split.md](docs/forgejo-split.md)). Its own `AGENTS.md` lists them.
+- **Clone:** `~/homelab-private` on the agents box. git and the API authenticate as `homelabsito`
+  with the token in `~/.config/homelab/forgejo-token`. Send it as a header scoped to Forgejo, never on
+  argv or in a URL: `GIT_CONFIG_KEY_0="http.http://git.homelab.lan:3200/.extraHeader"`.
+- **Change:** branch from fresh `origin/main`, commit, then `scripts/forgejo-pr "<title>" <body.md>`
+  (push + PR). Stop there. The owner merges in Forgejo and deploys the stack from the Komodo UI: no
+  apply workflow, no secrets in Forgejo.
+- **Never name a private stack in this repo**: not in files, commit messages, PR titles or bodies, or
+  anything a workflow prints (job logs are public). Shared live config here stays generic:
+  `scripts/db-dumps.sh` finds MariaDB containers by image, and the CrowdSec Access whitelist covers
+  routers named `*-access@docker`. Request output in `/docker/ops/results` isn't public, so it may name
+  them.
+
 ### Changes while the owner is watching: `pve-root`
 
 - The first connection **waits up to 15 min** until the owner approves it from the phone. Before

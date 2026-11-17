@@ -9,7 +9,7 @@ the private repo (`docs/forgejo-split.md` there), not here.
 
 | Piece | Where | Notes |
 |---|---|---|
-| Forgejo | `docker-compose/forgejo` on docker-tower, port 3200 | Rootless image, SQLite. Sign-in required for every page, no self-registration, every repo private, no SSH. DNS: `git.homelab.lan` on both Technitium instances; no Cloudflare record or tunnel rule. |
+| Forgejo | `docker-compose/forgejo` on docker-tower, port 3200 | Rootless image, SQLite. Sign-in required for every page, no self-registration, every repo private, no SSH. DNS: `git.homelab.lan` on docker-tower's Technitium (docker-prod's was skipped: its API token was rejected); no Cloudflare record or tunnel rule. Komodo uses the IP, so deploys don't need the name. |
 | Users | `diego` (admin), `homelabsito` (agents: write, can't push or merge `main`), `renovate-bot` | Created by `ops/requests/2026-11-14-forgejo.sh`. |
 | Runner | `forgejo-runner` in the same stack | Registered to `diego/homelab-private` only, label `homelab-private-ci`, host executor: jobs run in the container, which has **no Docker socket and no secrets**. CI only (image policy check on PRs). |
 | Renovate | its own Komodo stack (Phase 3) | Not a runner job: its token stays in Komodo, not in Forgejo. Scheduled for Saturdays like the Mend app here. One Renovate per platform: the Mend GitHub app keeps serving this repo. |
@@ -48,6 +48,10 @@ Same rule as here: propose and stop.
 
 ## Phases
 
+All six done 2026-11-14 to 2026-11-17. Two follow-ups are with the owner: GitHub Support purging the old
+PR refs and diff pages, and deleting the workflow runs from before the rewrite (their titles and
+logs named the moved stacks).
+
 1. **Forgejo stack** (this repo): compose, DNS, users, repo with history, branch protection,
    runner, bot token: `ops/requests/2026-11-14-forgejo.sh`. Then, by hand: sign in as `diego`
    (initial password in CT 104 `/root/forgejo-initial-password`), set a password and 2FA, and add the
@@ -65,16 +69,20 @@ Same rule as here: propose and stop.
    of DNS. Every stack whose directory is in `homelab-private` is pointed at it with the same branch,
    run directory and pre-deploy, and running ones are deployed one at a time (expect a no-op). A
    failed deploy is pointed back at GitHub on the spot. Rollback: point them back at GitHub.
-5. **Clean up this repo**: remove the moved files and references, then rewrite history. This is the
-   only irreversible step, so do it last, on a quiet morning, after a vzdump. Force-pushing doesn't
+5. **Clean up this repo**: remove the moved files and references (#63), then rewrite history
+   (git-filter-repo over every branch, verified: the final tree unchanged and no name left in any diff
+   or commit message; the owner force-pushed). This is the only irreversible step. Force-pushing doesn't
    remove GitHub's pull-request refs and diff pages, so ask GitHub Support to purge them. Clones made
    before the rewrite keep the old history. Shared live config stays generic so it never names a
    private stack: `scripts/db-dumps.sh` finds MariaDB containers by image, and the CrowdSec whitelist
    covers any router named `*-access@docker` (behind Cloudflare Access; the private stacks use it).
-6. **Docs**: AGENTS.md and docs/agent-access.md get the private-repo flow and a Forgejo section.
+6. **Docs**: AGENTS.md (the private-repo flow and the never-name-it rule) and docs/agent-access.md (a
+   Forgejo section).
 
-Phases 1–4 only add things: nothing in this repo changes, and the stacks keep deploying from GitHub
-until Phase 4's repoint proves out.
+Phases 1–4 only added things; nothing here changed until Phase 5. One lesson from Phase 5: apply
+redeploys every stack whose directory a merge touches, and prints their names in the public job log.
+Deleting the moved directories did exactly that. Nothing here names them any more, so it can't
+recur.
 
 ## Accepted trade-offs
 
