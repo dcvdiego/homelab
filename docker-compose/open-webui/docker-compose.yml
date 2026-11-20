@@ -1,7 +1,7 @@
 services:
   ollama:
     container_name: ollama
-    image: ollama/ollama:0.21.2@sha256:2038a264392af4d21f7f14e1568e8dd9aa0f2bd0f31d7d9a59a8cca1e9829663
+    image: ollama/ollama:0.40.16@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592
     restart: unless-stopped
     volumes:
       - /docker/ollama:/root/.ollama
