@@ -4,7 +4,7 @@ services:
     container_name: strapiDB
     platform: linux/amd64 #for platform error on Apple M1 chips
     restart: unless-stopped
-    image: postgres:12.0-alpine@sha256:5115ec0afd378e91b5eed848a7e0ae0a9c7995fe05ad14f1eb3038bcf53acbf7
+    image: postgres:12.22-alpine@sha256:7c8f4870583184ebadf7f17a6513620aac5f365a7938dc6a6911c1d5df2f481a
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
