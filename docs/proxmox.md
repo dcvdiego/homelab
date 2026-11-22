@@ -58,3 +58,36 @@ PVE 8 reached end of life on 2026-08-31. Plan checked against the official guide
 `apt modernize-sources`, remove old kernels after a stable period, `zpool upgrade` only once a
 rollback is no longer wanted. Then: move CT rootfs volumes to `zfspool` storage so vzdump can use
 snapshot mode (see [backups.md](backups.md)).
+
+## Power saving
+
+Hardware: i3-13100 (4C/8T, 4.5 GHz boost) on an ASUS PRIME B760M-K, RTL8125 NIC, 2× NVMe, 2× SATA SSD, 2× HDD.
+
+### Done (2026-11-22)
+
+- **CPU policy**: `ops/pvehost/cpu-powersave.service` sets intel_pstate to `powersave` with EPP
+  `balance_power` at boot. The PVE kernel defaults to `performance`, which pins EPP at 0. With HWP,
+  intel_pstate's `powersave` still boosts under load; it is not the old fixed-lowest-clock governor
+  ([kernel docs](https://kernel.org/doc/html/v7.0/admin-guide/pm/intel_pstate.html)). Measured with
+  `turbostat` (package, 60 s, similar load): 24.9 W / 60 °C / 4.1 GHz → 17.2 W / 51 °C / 2.4 GHz.
+  To check: `sort /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference | uniq -c`.
+- `linux-cpupower` installed for `turbostat`:
+  `turbostat --quiet --show Busy%,Bzy_MHz,PkgWatt,PkgTmp,Pkg%pc2,Pkg%pc6,Pkg%pc8 -i 60 -n 1`.
+
+### Open (needs physical access, in case the network drops)
+
+- **Package C-states are 0%** (pc2/pc6/pc8). Core C-states reach C10 (`intel_idle`, MWAIT 0x60) and
+  the NVMe links have ASPM L1, but the RTL8125 has `l1_aspm=0` (r8169 leaves it off by default),
+  which is the usual blocker on Intel desktops. Test with an automatic revert, at the console:
+  `systemd-run --on-active=10min sh -c 'echo 0 > /sys/bus/pci/devices/0000:04:00.0/link/l1_aspm'`,
+  then `echo 1 > …/l1_aspm`, then watch `turbostat` and the link (`ip -s link`, `dmesg`).
+- **BIOS** (names vary by version): CPU C-states on and the package C-state limit at C10/Auto, Native ASPM +
+  PCH/DMI ASPM on, unused onboard devices (audio, serial) off. Optional: a lower PL2 (about 45–50 W instead
+  of 89 W), which cuts the heat and fan spikes at a small cost in peak speed.
+
+### Not doing
+
+- `powertop --auto-tune`: it enables USB autosuspend, which can put the Zigbee coordinator to sleep,
+  and it has been reported to raise power draw on PVE.
+- HDD spindown: Frigate and the media apps touch the disks constantly.
+- Forcing ASPM with `pcie_aspm=force` or `max_cstate` kernel parameters.
