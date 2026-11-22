@@ -1,0 +1,17 @@
+# Install on pvehost: /etc/systemd/system/cpu-powersave.service, then `systemctl enable --now cpu-powersave`.
+# The PVE kernel defaults intel_pstate to the "performance" policy, which pins EPP at 0 and boosts
+# every burst to 4.5 GHz on the i3-13100. intel_pstate's "powersave" is HWP-driven (not the old
+# fixed-lowest-clock governor): it still boosts under load, just less eagerly. Measured 2026-11-22
+# under similar load: package 24.9 W / 60 °C -> 17.2 W / 51 °C. See docs/proxmox.md "Power saving".
+[Unit]
+Description=CPU power: intel_pstate powersave policy with balance_power EPP
+After=sysinit.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Policy first: in the "performance" policy the driver rejects any EPP other than 0.
+ExecStart=/bin/sh -c 'for c in /sys/devices/system/cpu/cpu*/cpufreq; do echo powersave > $$c/scaling_governor; echo balance_power > $$c/energy_performance_preference; done'
+
+[Install]
+WantedBy=multi-user.target
