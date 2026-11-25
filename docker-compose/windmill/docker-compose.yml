@@ -25,7 +25,9 @@ x-logging: &default-logging
     max-file: "10"
     compress: "true"
 
-x-db-url: &db-url DATABASE_URL=postgres://postgres:${WINDMILL_DB_PASSWORD:?set in the Komodo stack env}@db/windmill?sslmode=disable
+# Host is the container name, not the service name: windmill_server is also on network_default, where
+# "db" resolves to another stack's database (notes-db-1, 2026-11-25).
+x-db-url: &db-url DATABASE_URL=postgres://postgres:${WINDMILL_DB_PASSWORD:?set in the Komodo stack env}@windmill-db/windmill?sslmode=disable
 
 services:
   db:
@@ -34,7 +36,9 @@ services:
     shm_size: 1g
     restart: unless-stopped
     volumes:
-      # 18+ keeps the cluster in /var/lib/postgresql/18/docker: mount the parent (upstream comment)
+      # 18+ keeps the cluster in /var/lib/postgresql/18/docker: mount the parent (upstream comment).
+      # The host dir must be owned by 999:999 (the image's postgres user), or startup fails with
+      # "mkdir: cannot create directory '/var/lib/postgresql': Permission denied".
       - /docker/windmill/db:/var/lib/postgresql
     expose:
       - 5432
@@ -47,6 +51,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s                # first start runs initdb
     networks: [windmill]
     logging: *default-logging
 
