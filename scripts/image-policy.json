@@ -57,6 +57,25 @@
         "zulip-rabbitmq": "rabbitmq",
         "zulip-redis": "redis"
       }
+    },
+    "windmill": {
+      "docs": "https://www.windmill.dev/docs/advanced/self_host",
+      "app": {
+        "service": "windmill_server",
+        "image": "ghcr.io/windmill-labs/windmill"
+      },
+      "same_version": [
+        "windmill_worker",
+        "windmill_worker_native",
+        "windmill_indexer",
+        "windmill_extra"
+      ],
+      "urls": [
+        "https://raw.githubusercontent.com/windmill-labs/windmill/v{version}/docker-compose.yml"
+      ],
+      "companions": {
+        "db": "db"
+      }
     }
   },
   "sequential": {
@@ -250,6 +269,12 @@
     },
     "ghcr.io/renovatebot/renovate": {
       "github": "renovatebot/renovate"
+    },
+    "ghcr.io/windmill-labs/windmill": {
+      "github": "windmill-labs/windmill"
+    },
+    "ghcr.io/windmill-labs/windmill-extra": {
+      "github": "windmill-labs/windmill"
     },
     "mongo": {
       "link": "https://www.mongodb.com/docs/manual/release-notes/"

@@ -53,7 +53,7 @@ finish() {
 }
 
 # Postgres: full cluster dump (all databases, roles) as the container's own superuser.
-for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database strapiDB; do
+for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database strapiDB windmill-db; do
   f="$OUT/$c-$STAMP.sql.gz"
   docker exec "$c" sh -c 'pg_dumpall -U "$POSTGRES_USER"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
   finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'PostgreSQL database cluster dump complete' 5

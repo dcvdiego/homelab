@@ -452,6 +452,13 @@ Names below match the seed config; the live config may use others, so read it fi
 
 The `$DOMAIN` zone in Technitium is a **Forwarder** zone (→ 1.1.1.1). Local A records override specific subdomains (e.g. `zigbee2mqtt.$DOMAIN → 192.168.1.224`). This allows local-only access while Cloudflare handles external DNS for the same domain.
 
+## Windmill (automations)
+
+Komodo stack **windmill** (server docker-prod), `https://windmill.$DOMAIN`, compose
+`docker-compose/windmill/`. New automations (scripts, flows, schedules, webhooks) go there rather than
+as cron jobs or timers on a host. Layout, first sign-in, secrets, backups and upgrades:
+[docs/windmill.md](docs/windmill.md).
+
 ## Rules
 
 - **API first, SSH last**: Always use Proxmox API / Komodo / local CLIs before falling back to SSH. Never use `homelab-root` if there's an API or non-root SSH alternative. See Access Priority table above.

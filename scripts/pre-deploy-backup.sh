@@ -150,6 +150,10 @@ case "$STACK" in
     # the repos match. The runner holds only its registration (re-creatable) and is not copied.
     stop forgejo
     files forgejo /docker/forgejo/data 'tmp' 'log' ;;
+  windmill)
+    # Whole cluster: Windmill keeps datatable/DuckLake/wm_fork_* databases and cluster-level roles
+    # beside the windmill DB (its docs: dump with pg_dumpall, never one database)
+    pg windmill-db ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;

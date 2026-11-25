@@ -86,7 +86,9 @@
         "ghcr.io/moghtech/komodo-periphery",
         "codeberg.org/forgejo/forgejo",
         "mongo",
-        "ghcr.io/nikosch86/docker-proxmox-backup-server"
+        "ghcr.io/nikosch86/docker-proxmox-backup-server",
+        "ghcr.io/windmill-labs/windmill",
+        "ghcr.io/windmill-labs/windmill-extra"
       ],
       "addLabels": ["review"]
     },
@@ -108,7 +110,7 @@
     },
     {
       "description": "Companions that follow the app's own compose file: only same-tag rebuilds (digest) from Renovate; tag changes come from scripts/upstream-compose.py --fix on the app's update PR.",
-      "matchFileNames": ["docker-compose/security/docker-compose.yml", "docker-compose/zulip/docker-compose.yml"],
+      "matchFileNames": ["docker-compose/security/docker-compose.yml", "docker-compose/zulip/docker-compose.yml", "docker-compose/windmill/docker-compose.yml"],
       "matchPackageNames": ["/^(docker\\.io/(library/)?)?(postgres|redis|memcached|rabbitmq)$/", "zulip/zulip-postgresql"],
       "matchUpdateTypes": ["major", "minor", "patch"],
       "enabled": false
@@ -188,6 +190,13 @@
     {
       "matchPackageNames": ["ghcr.io/open-webui/open-webui"],
       "prBodyNotes": ["**Open WebUI**: pin vX.Y.Z (never :main), back up before every update (Komodo pre-deploy does). Docs: https://docs.openwebui.com/getting-started/updating"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/windmill-labs/windmill", "ghcr.io/windmill-labs/windmill-extra"],
+      "groupName": "Windmill",
+      "groupSlug": "windmill",
+      "sourceUrl": "https://github.com/windmill-labs/windmill",
+      "prBodyNotes": ["**Windmill**: server, workers, indexer and windmill-extra on the same version (grouped PR); postgres follows the release's docker-compose.yml (CI syncs it). Migrations run on their own at startup and there's no documented downgrade: the Komodo pre-deploy takes a pg_dumpall first, and that dump is the way back. Read the release notes for breaking changes (CHANGELOG `BREAKING`). Docs: https://www.windmill.dev/docs/advanced/self_host"]
     },
     {
       "matchPackageNames": ["codeberg.org/forgejo/forgejo"],
