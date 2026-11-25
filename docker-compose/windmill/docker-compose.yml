@@ -1,0 +1,186 @@
+# windmill: scripts, flows and schedules for the homelab's automations (https://www.windmill.dev).
+# Deploy on docker-prod. UI https://windmill.${DOMAIN}: on LAN/tailnet straight to Traefik (Technitium
+# split DNS), from outside through the *.$DOMAIN tunnel wildcard behind Cloudflare Access.
+#
+# Follows the docs' Traefik variant of the official compose, for the version pinned below:
+#   https://www.windmill.dev/docs/advanced/self_host#docker ("Traefik in place of Caddy")
+#   https://raw.githubusercontent.com/windmill-labs/windmill/v1.884.1/docker-compose.yml
+# Service names match upstream (scripts/upstream-compose.py maps them). Changes from upstream:
+# - Caddy replaced by this repo's Traefik: /ws/, /ws_mp/, /ws_debug/ -> windmill_extra:3000, the
+#   rest -> windmill_server:8000 (the Caddyfile's and the docs' Traefik template's routing).
+# - Workers: 2 default (upstream 3) + 1 native, same 2 GB limits. Docs' rule of thumb is 1 worker per
+#   vCPU and 1-2 GB; docker-prod has ~4 GB free. Raise `replicas` when jobs start queueing.
+# - No SMTP :25 (email triggers) and no pull_policy: always (images are pinned by digest).
+# - DB password from the Komodo stack env instead of upstream's `changeme`; Postgres data on a host
+#   path (/docker/windmill/db) so it's in the vzdump/PBS jobs, nightly dumps and pre-deploy backups.
+# Caches (dependency cache, LSP cache, logs) stay named volumes: the docs say they need no backup.
+#
+# Upgrades: migrations run on their own at startup; no documented downgrade, so the way back is the
+# pre-deploy pg_dumpall (Komodo Pre Deploy). Server, workers, indexer and windmill_extra move together
+# (Renovate group). Postgres follows upstream's compose (postgres:18); a major is a dump and restore.
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "10"
+    compress: "true"
+
+x-db-url: &db-url DATABASE_URL=postgres://postgres:${WINDMILL_DB_PASSWORD:?set in the Komodo stack env}@db/windmill?sslmode=disable
+
+services:
+  db:
+    image: postgres:18@sha256:c699303802144847d238196173655dbbecf7a96aeca1565f2b02eb671a1f0b6b
+    container_name: windmill-db
+    shm_size: 1g
+    restart: unless-stopped
+    volumes:
+      # 18+ keeps the cluster in /var/lib/postgresql/18/docker: mount the parent (upstream comment)
+      - /docker/windmill/db:/var/lib/postgresql
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres          # upstream's default; named so the backup scripts' pg_dumpall -U finds it
+      POSTGRES_PASSWORD: ${WINDMILL_DB_PASSWORD:?set in the Komodo stack env}
+      POSTGRES_DB: windmill
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [windmill]
+    logging: *default-logging
+
+  windmill_server:
+    image: ghcr.io/windmill-labs/windmill:1.884.1@sha256:8e190deeb36a39aa6b25bca7dbe2c033d1c6069c077bdd569b52bec635123ff2
+    restart: unless-stopped
+    expose:
+      - 8000
+    environment:
+      - *db-url
+      - MODE=server
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - worker_logs:/tmp/windmill/logs
+    networks: [windmill, network_default]
+    labels:
+      - "traefik.enable=true"
+      # "-access": behind Cloudflare Access (CrowdSec whitelist, docker-compose/crowdsec)
+      - "traefik.http.routers.windmill-access.rule=Host(`windmill.${DOMAIN}`)"
+      - "traefik.http.routers.windmill-access.entrypoints=websecure"
+      - "traefik.http.routers.windmill-access.service=windmill"
+      - "traefik.http.services.windmill.loadbalancer.server.port=8000"
+    logging: *default-logging
+
+  windmill_worker:
+    image: ghcr.io/windmill-labs/windmill:1.884.1@sha256:8e190deeb36a39aa6b25bca7dbe2c033d1c6069c077bdd569b52bec635123ff2
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 2048M
+    restart: unless-stopped
+    # Upstream default: PID namespace isolation for jobs (unshare --mount-proc needs privileged).
+    # https://www.windmill.dev/docs/advanced/security_isolation. If unshare fails, the worker logs an
+    # error at startup and runs jobs without isolation. No Docker socket.
+    # Trade-off: privileged makes a container escape easier for a malicious job (into docker-prod's LXC,
+    # not pvehost). Without it there's no PID isolation and every job can read the worker's
+    # /proc/1/environ, DATABASE_URL included, i.e. the whole DB. Script authors are the owner only.
+    privileged: true
+    environment:
+      - *db-url
+      - MODE=worker
+      - WORKER_GROUP=default
+      - FAVOR_UNSHARE_PID=true
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - worker_dependency_cache:/tmp/windmill/cache
+      - worker_logs:/tmp/windmill/logs
+    networks: [windmill]
+    logging: *default-logging
+
+  # Native jobs (HTTP, Postgres queries, ...) run in-process: cheap, no isolation (upstream).
+  windmill_worker_native:
+    image: ghcr.io/windmill-labs/windmill:1.884.1@sha256:8e190deeb36a39aa6b25bca7dbe2c033d1c6069c077bdd569b52bec635123ff2
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 2048M
+    restart: unless-stopped
+    environment:
+      - *db-url
+      - MODE=worker
+      - WORKER_GROUP=native
+      - NATIVE_MODE=true
+      - SLEEP_QUEUE=200
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - worker_logs:/tmp/windmill/logs
+    networks: [windmill]
+    logging: *default-logging
+
+  # Full-text job/log search is Enterprise Edition: off, as upstream (replicas 0).
+  windmill_indexer:
+    image: ghcr.io/windmill-labs/windmill:1.884.1@sha256:8e190deeb36a39aa6b25bca7dbe2c033d1c6069c077bdd569b52bec635123ff2
+    deploy:
+      replicas: 0
+    restart: unless-stopped
+    expose:
+      - 8002
+    environment:
+      - PORT=8002
+      - *db-url
+      - MODE=indexer
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - windmill_index:/tmp/windmill/search
+      - worker_logs:/tmp/windmill/logs
+    networks: [windmill]
+    logging: *default-logging
+
+  # LSP (editor code intelligence) and debugger; multiplayer is Enterprise only. Upstream runs :latest;
+  # pinned here to the server's release (same version, Renovate group).
+  windmill_extra:
+    image: ghcr.io/windmill-labs/windmill-extra:1.884.1@sha256:18ee27b5edb0c4694291d9637820c726d869e926c58531d0b449af77dd4b7ba4
+    restart: unless-stopped
+    expose:
+      - 3000
+    environment:
+      - ENABLE_LSP=true
+      - ENABLE_MULTIPLAYER=false
+      - ENABLE_DEBUGGER=true
+      - DEBUGGER_PORT=3003
+      - ENABLE_NSJAIL=false
+      # Upstream: never false on an internet-reachable deployment (unauthenticated code execution)
+      - REQUIRE_SIGNED_DEBUG_REQUESTS=true
+      - WINDMILL_BASE_URL=http://windmill_server:8000
+    volumes:
+      - lsp_cache:/pyls/.cache
+    networks: [windmill, network_default]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.windmill-extra-access.rule=Host(`windmill.${DOMAIN}`) && (PathPrefix(`/ws/`) || PathPrefix(`/ws_mp/`) || PathPrefix(`/ws_debug/`))"
+      - "traefik.http.routers.windmill-extra-access.entrypoints=websecure"
+      - "traefik.http.routers.windmill-extra-access.service=windmill-extra"
+      - "traefik.http.services.windmill-extra.loadbalancer.server.port=3000"
+    logging: *default-logging
+
+networks:
+  windmill: {}
+  network_default:
+    name: network_default
+    external: true
+
+volumes:
+  worker_dependency_cache: null
+  worker_logs: null
+  windmill_index: null
+  lsp_cache: null
