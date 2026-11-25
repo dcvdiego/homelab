@@ -138,10 +138,12 @@ echo "== 4. Default superadmin password"
 D=$(cat /tmp/windmill-domain); rm -f /tmp/windmill-domain
 W="https://windmill.$D"
 CURL() { curl -4 -fsS --max-time 20 --resolve "windmill.$D:443:192.168.1.224" "$@"; }
+# Until this step runs, admin@windmill.dev / changeme works for anyone on LAN/tailnet (outside, Access
+# is in front): poll every second so that window is the server's start-up plus ~1 s.
 up=no
-for _ in $(seq 1 60); do
-  if CURL -o /dev/null "$W/api/version"; then up=yes; break; fi
-  sleep 5
+for _ in $(seq 1 300); do
+  if CURL -o /dev/null "$W/api/version" 2>/dev/null; then up=yes; break; fi
+  sleep 1
 done
 [ "$up" = yes ] && echo "windmill: up ($(CURL "$W/api/version"))" || { echo "windmill: not reachable through Traefik after 5 min"; exit 1; }
 

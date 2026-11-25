@@ -38,6 +38,13 @@ automations. Komodo stack **windmill** on docker-prod, compose `docker-compose/w
 | `windmill_indexer` ×0 | full-text log search | Enterprise only, off as upstream |
 | `windmill_extra` | LSP + debugger, :3000 | Traefik `/ws/`, `/ws_mp/`, `/ws_debug/`. Multiplayer is Enterprise only |
 
+**Privileged workers** (upstream's default): `privileged` is what lets `unshare --mount-proc` give
+each job its own PID namespace. It also makes a container escape easier for a malicious job (it
+would land in docker-prod's LXC, not pvehost). Dropping it is worse here: jobs would then see the
+worker's processes and read `DATABASE_URL` from `/proc/1/environ`, i.e. the whole database. Fine
+while only the owner writes scripts; revisit (nsjail, or agent workers without DB access) before
+letting anyone else author jobs.
+
 Sizing: the docs' rule of thumb is 1 worker per vCPU and 1–2 GB RAM, and one worker runs one job at a
 time. docker-prod (6 vCPU, ~21 GB, ~4 GB free on 2026-11-25) runs 3 workers; raise
 `windmill_worker` `replicas` in the compose (a PR) if jobs queue. Each job over its memory limit is

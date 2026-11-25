@@ -84,6 +84,9 @@ services:
     # Upstream default: PID namespace isolation for jobs (unshare --mount-proc needs privileged).
     # https://www.windmill.dev/docs/advanced/security_isolation. If unshare fails, the worker logs an
     # error at startup and runs jobs without isolation. No Docker socket.
+    # Trade-off: privileged makes a container escape easier for a malicious job (into docker-prod's LXC,
+    # not pvehost). Without it there's no PID isolation and every job can read the worker's
+    # /proc/1/environ, DATABASE_URL included, i.e. the whole DB. Script authors are the owner only.
     privileged: true
     environment:
       - *db-url
