@@ -98,10 +98,11 @@ def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
                "REHEARSE_LOG": str(log), "GITHUB_WORKSPACE": str(ROOT)}
         try:
             r = subprocess.run(["bash", "-euo", "pipefail", str(req)], cwd=ROOT, env=env,
-                               capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
+                               capture_output=True, text=True, timeout=int(os.environ.get("REHEARSE_TIMEOUT", "120")), stdin=subprocess.DEVNULL)
             out, rc = r.stdout + r.stderr, r.returncode
         except subprocess.TimeoutExpired as e:
-            out, rc = (e.stdout or b"").decode() + (e.stderr or b"").decode(), "timeout"
+            txt = lambda v: v.decode(errors="replace") if isinstance(v, bytes) else (v or "")  # bytes or str by Python version
+            out, rc = txt(e.stdout) + txt(e.stderr), "timeout"
             errors.append("did not finish within 120 s with fake ssh/curl/sleep (a loop that never ends?)")
         for line in out.splitlines():
             if SHELL_ERR.search(line):
