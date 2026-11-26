@@ -66,8 +66,7 @@ Kinds:
 | `prom/prometheus` | monitoring | batch | Versioned tags. | [install](https://prometheus.io/docs/prometheus/latest/installation/) |
 | `grafana/loki` | monitoring | batch | Versioned tags; read upgrade notes on majors. | [upgrade](https://grafana.com/docs/loki/latest/setup/upgrade/) |
 | `grafana/alloy` | monitoring | batch | Versioned tags. | [docker](https://grafana.com/docs/alloy/latest/set-up/install/docker/) |
-| `telegraf` | monitoring | batch | Versioned tags. | [Docker Hub](https://hub.docker.com/_/telegraf) |
-| `influxdb` | monitoring | db | `latest` still means 2.x; InfluxDB 3 is a separate product, so Renovate is held below 3. | [Docker Hub](https://hub.docker.com/_/influxdb) |
+| `prompve/prometheus-pve-exporter` | monitoring | batch | Versioned tags `X.Y.Z`. | [README](https://github.com/prometheus-pve/prometheus-pve-exporter) |
 | `louislam/uptime-kuma` | monitoring | batch | Major tag `2` in docs; pinned exact. | [README](https://github.com/louislam/uptime-kuma) |
 | `bugattiguy527/termix` | dev | batch | Tags `X.Y.Z` (older `release-X.Y.Z`). | [README](https://github.com/Termix-SSH/Termix) |
 | `ghcr.io/moghtech/komodo-core` | komodo | review | Upstream compose uses major tag `2`; Core and Periphery on the same version (grouped PR). Not a Komodo stack: deploy by hand (below). | [setup](https://komo.do/docs/setup/mongo) |

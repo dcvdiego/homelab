@@ -1,0 +1,17 @@
+# Grafana data sources from git. The InfluxDB ones went with InfluxDB (replaced by Prometheus:
+# pve-exporter for Proxmox, Alloy's cAdvisor for containers). Loki is left as configured in the UI.
+apiVersion: 1
+
+deleteDatasources:
+  - name: influxdb
+    orgId: 1
+  - name: influxdb-proxmox
+    orgId: 1
+
+datasources:
+  - name: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

@@ -98,3 +98,38 @@ loki.write "default" {
   }
   external_labels = {}
 }
+
+// ----------------------------------------------------------------------------
+// Container metrics (replaces Telegraf + InfluxDB): Alloy's built-in cAdvisor,
+// written to Prometheus. Kept small: Docker containers only, the compose
+// project/service labels only, and only the metric groups the dashboard uses.
+// Ref: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.cadvisor/
+// ----------------------------------------------------------------------------
+prometheus.exporter.cadvisor "containers" {
+  docker_only                  = true
+  store_container_labels       = false
+  allowlisted_container_labels = ["com.docker.compose.project", "com.docker.compose.service"]
+  enabled_metrics              = ["cpu", "memory", "network", "diskIO", "oom_event"]
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.containers.targets
+  scrape_interval = "30s"
+  forward_to      = [prometheus.relabel.cadvisor.receiver]
+}
+
+// Drop the cgroups that aren't containers (root and system slices have no name)
+prometheus.relabel "cadvisor" {
+  rule {
+    source_labels = ["name"]
+    regex         = ""
+    action        = "drop"
+  }
+  forward_to = [prometheus.remote_write.local.receiver]
+}
+
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}

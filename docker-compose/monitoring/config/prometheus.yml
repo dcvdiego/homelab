@@ -19,3 +19,25 @@ scrape_configs:
           - frigate:5000  # frigate stack, network_default (5000 is not exposed on the host)
         labels:
           env: homelab
+
+  # Proxmox: pve-exporter queries pvehost's API; one target, cluster and node metrics.
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ['1']
+      node: ['1']
+    static_configs:
+      - targets:
+          - 192.168.1.148  # pvehost
+        labels:
+          env: homelab
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+
+  # Container metrics arrive from Alloy's cAdvisor by remote write (/api/v1/write), not by scrape.
