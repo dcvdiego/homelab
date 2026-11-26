@@ -92,13 +92,24 @@ id=$(komodo execute DeployStack "{\"stack\":\"$stack\"}" | jq -r '._id["$oid"]')
 for _ in $(seq 120); do
   u=$(komodo read GetUpdate "{\"id\":\"$id\"}"); [ "$(jq -r .status <<<"$u")" = Complete ] && break; sleep 5
 done
-echo "  deploy $stack: $(jq -r 'if .success then "ok" else "FAILED" end' <<<"$u")"
+[ "$(jq -r .success <<<"$u")" = true ] || { echo "  deploy $stack: FAILED (see the update in Komodo)"; exit 1; }
+echo "  deploy $stack: ok"
 sleep 90
 echo "  Prometheus targets:"
 curl -fsS "$PROM/api/v1/targets" | jq -r '.data.activeTargets[] | "    \(.labels.job) \(.labels.instance) \(.health) \(.lastError)"'
 q() { curl -fsS "$PROM/api/v1/query" --data-urlencode "query=$1" | jq -r '.data.result[0].value[1] // "none"'; }
-echo "  containers with memory metrics: $(q 'count(container_memory_rss{name!=""})')"
-echo "  cAdvisor series: $(q 'count({__name__=~"container_.+"})')"
-echo "  Proxmox guests seen: $(q 'count(pve_guest_info)')  pve_up for node: $(q 'max(pve_up{id=~"node/.*"})')"
+containers=$(q 'count(container_memory_rss{name!=""})'); series=$(q 'count({__name__=~"container_.+"})')
+guests=$(q 'count(pve_guest_info)'); node_up=$(q 'max(pve_up{id=~"node/.*"})'); pve_target=$(q 'up{job="pve"}')
+echo "  containers with memory metrics: $containers (cAdvisor series: $series)"
+echo "  Proxmox: scrape up=$pve_target, node up=$node_up, guests seen=$guests"
 echo "  memory now (MiB):"
 PVE "pct exec 101 -- docker stats --no-stream --format '{{.Name}} {{.MemUsage}}'" | grep -E '^(alloy|prometheus|grafana|loki|pve-exporter|uptime-kuma) ' | sed 's/^/    /'
+
+# Fail the run if a feed is missing, so a half-working migration doesn't look done
+bad=""
+[ "$containers" != none ] && [ "${containers%.*}" -ge 10 ] || bad="$bad container-metrics"
+[ "$pve_target" = 1 ] && [ "$node_up" = 1 ] || bad="$bad pve-exporter"
+[ "$guests" != none ] && [ "${guests%.*}" -ge 1 ] || bad="$bad pve-guests"
+if [ -n "$bad" ]; then echo "CHECK FAILED:$bad (InfluxDB is already archived; see the undo notes above)"; exit 1; fi
+echo "all feeds OK"
+
