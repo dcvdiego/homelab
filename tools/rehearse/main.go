@@ -96,7 +96,7 @@ func writesFiles(tool string, args []string) bool {
 }
 
 // Real tools whose arguments are strings, never files to read.
-var stringTools = set("basename", "dirname", "expr", "seq", "date", "true", "false", "printf", "echo", "test", "[", "numfmt")
+var stringTools = set("basename", "dirname", "expr", "seq", "true", "false", "printf", "echo", "test", "[", "numfmt")
 
 var shells = set("sh", "bash", "dash", "/bin/sh", "/bin/bash", "/usr/bin/env sh")
 

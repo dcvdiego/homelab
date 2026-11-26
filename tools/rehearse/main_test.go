@@ -44,6 +44,7 @@ func TestFixtures(t *testing.T) {
 		"dir-read.sh":             {exit: "1"},
 		"string-tools.sh":         {exit: "0"},
 		"write-then-read.sh":      {exit: "0"},
+		"date-file.sh":            {exit: "1"},
 	}
 	secret := filepath.Join("testdata", "untracked-secret.env") // created here, never committed
 	if err := os.WriteFile(secret, []byte("CF_TOKEN=leak\n"), 0o600); err != nil {
