@@ -12,7 +12,7 @@ at once, and dummy values stand in for the apply job's secrets. What it catches:
     Warpgate cuts sessions after ~5 minutes (PR #74); detach with setsid and poll, as in #75.
     This is an error. A request whose long-looking command is known to be quick names it in a line
     `# rehearse: allow-long <command> <why>` (e.g. `# rehearse: allow-long du small dir`), which makes
-    findings for that command, and only that one, warnings.
+    findings for every use of that command in the request warnings, and no other command's.
 With fake data, a request usually stops at its first real check (`CHECK FAILED`, an empty Komodo
 reply). That is expected and not an error; the report says how many remote commands were reached.
 
@@ -80,7 +80,10 @@ def ssh_stub(args: list[str]) -> int:
     remote = " ".join(args[i + 1:])
     stdin = "" if sys.stdin.isatty() else sys.stdin.read()
     # `ssh pve 'bash -s' <<EOF` / `pct exec 101 -- sh -s`: the payload is the script, check it as one
-    if stdin and re.search(r"(?:^|\s)(?:ba)?sh(?:\s+-\w+)*\s+-\w*s\w*\s*$|(?:^|\s)(?:ba)?sh\s*$", remote):
+    shell_reads_stdin = re.search(
+        r"(?:^|\s)(?:ba)?sh(?:\s+(?:[-+]\w+|pipefail|errexit|nounset|xtrace))*\s+-\w*s\w*(?:\s|$)"  # sh -s, bash -euo pipefail -s --
+        r"|(?:^|\s)(?:ba)?sh(?:\s+[-+]\w+)*\s*$", remote)                                           # bare sh / bash -e
+    if stdin and shell_reads_stdin:
         remote = remote + "\n" + stdin
     log = pathlib.Path(os.environ["REHEARSE_LOG"])
     n = sum(1 for line in log.open() if line.startswith("CMD\t")) + 1 if log.exists() else 1

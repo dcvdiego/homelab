@@ -53,7 +53,8 @@ errors in any nested layer of a remote command (`ssh` → `pct exec … sh -c '�
 long-running work (tar, rsync, du, dumps, pulls) in a single SSH session, because Warpgate cuts
 sessions after about 5 minutes: run those detached with `setsid` and poll. If such a command is
 known to be quick, name it in a line `# rehearse: allow-long <command> <why>` (e.g.
-`# rehearse: allow-long du small dir`): findings for that command only become warnings.
+`# rehearse: allow-long du small dir`): findings for every use of that command in the request
+become warnings, and only that command's. Prefer detaching over allow-long when in doubt.
 Run it locally with `python3 scripts/rehearse-request.py ops/requests/<name>.sh`.
 
 It also renders every stack as Komodo's periphery sees it (`scripts/check-compose-komodo.py`):
