@@ -242,6 +242,8 @@ homelab/
 ├── scripts/               # helpers (Kuma monitors, Technitium, restore test, Warpgate) and the image policy
 │                          #   checks: check-images.py, upstream-compose.py, image-policy.json; release-notes.py
 │                          #   (upgrade notes for pending updates) + post-comments.py
+├── tools/                 # Go module: rehearse (sandboxed rehearsal of ops requests, run by ops-check;
+│                          #   `go -C tools test ./...`, cases in tools/rehearse/testdata/)
 ├── docs/                  # design notes: agent access, networking/DNS, agents box, Komodo migration
 └── terraform/             # Proxmox IaC (WIP)
 ```

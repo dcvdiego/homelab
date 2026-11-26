@@ -2,9 +2,11 @@
 # no route to the LAN; ssh/scp/rsync/curl are faked, so requests never connect to the homelab.
 #   compose   scripts/check-compose-komodo.py: every stack, rendered as Komodo's periphery would
 #             see it (env_file outside the checkout is unreadable there, PR #75)
-#   requests  scripts/rehearse-request.py: each added or edited ops request, run with fake
-#             ssh/curl/sleep (nested quoting, shell errors, long commands Warpgate would cut, PR #74)
-# Undo: delete this file and the two scripts.
+#   requests  tools/rehearse (Go): its tests, then each added or edited ops request run in a
+#             sandboxed shell interpreter with ssh/curl/python3/docker... faked (nested quoting,
+#             shell errors, long commands Warpgate would cut, PR #74)
+# Go: the runner's preinstalled Go fetches the version tools/go.mod asks for (GOTOOLCHAIN=auto).
+# Undo: delete this file, scripts/check-compose-komodo.py and tools/rehearse.
 # Waits in ops/pending-workflows/ until the owner moves it to .github/workflows/ (README there).
 name: ops-check
 
@@ -14,7 +16,7 @@ on:
       - "docker-compose/**"
       - "ops/requests/**"
       - "scripts/check-compose-komodo.py"
-      - "scripts/rehearse-request.py"
+      - "tools/**"
       - ".github/workflows/ops-check.yml"
 
 permissions:
@@ -35,10 +37,15 @@ jobs:
           persist-credentials: false
       - name: Compose as Komodo sees it
         run: python3 scripts/check-compose-komodo.py
+      - name: Test the rehearsal tool
+        run: |
+          go -C tools vet ./...
+          go -C tools test ./...
+          go -C tools build -o "$RUNNER_TEMP/rehearse" ./rehearse
       - name: Rehearse ops requests
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           mapfile -t reqs < <(git diff --no-renames --diff-filter=AM --name-only "origin/$BASE_REF...HEAD" -- 'ops/requests/*.sh')
           [ ${#reqs[@]} -gt 0 ] || { echo "No ops requests added or edited."; exit 0; }
-          python3 -I scripts/rehearse-request.py "${reqs[@]}"
+          "$RUNNER_TEMP/rehearse" "${reqs[@]}"

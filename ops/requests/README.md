@@ -47,15 +47,19 @@ results dir) and that the change matches the PR description.
 
 ## Before merge (CI)
 
-The `ops-check` workflow (`.github/workflows/ops-check.yml`, proposed in `ops/pending-workflows/`) rehearses each added or edited request with fake `ssh`, `curl` and `sleep`
-(`scripts/rehearse-request.py`); nothing reaches the homelab. It fails on shell errors, on quoting
+The `ops-check` workflow (`.github/workflows/ops-check.yml`, proposed in `ops/pending-workflows/`) rehearses each added or edited request (`tools/rehearse`, Go). The request runs in a sandboxed
+shell interpreter (mvdan.cc/sh), not bash: `ssh`, `scp`, `curl`, `python3`, `docker` and other
+commands that could reach a host are faked, only text tools such as `jq` and `sed` run, and file
+writes go to a scratch directory, so nothing reaches the homelab. Remote commands are parsed into a
+syntax tree, including every nested `sh -c` and heredocs fed to `sh -s`. It fails on shell errors, on quoting
 errors in any nested layer of a remote command (`ssh` → `pct exec … sh -c '…'`), and on
 long-running work (tar, rsync, du, dumps, pulls) in a single SSH session, because Warpgate cuts
 sessions after about 5 minutes: run those detached with `setsid` and poll. If such a command is
 known to be quick, name it in a line `# rehearse: allow-long <command> <why>` (e.g.
 `# rehearse: allow-long du small dir`): findings for every use of that command in the request
 become warnings, and only that command's. Prefer detaching over allow-long when in doubt.
-Run it locally with `python3 scripts/rehearse-request.py ops/requests/<name>.sh`.
+Run it locally from the repo root with `go -C tools run ./rehearse ops/requests/<name>.sh`. Its cases are in
+`tools/rehearse/testdata/`; add one when it misses something.
 
 It also renders every stack as Komodo's periphery sees it (`scripts/check-compose-komodo.py`):
 compose runs inside that container and can't read an `env_file` outside the stack's checkout or
