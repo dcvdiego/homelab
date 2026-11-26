@@ -1,0 +1,44 @@
+# Catch what otherwise only fails in the apply job after merge. GitHub-hosted runner, no secrets;
+# nothing reaches the homelab.
+#   compose   scripts/check-compose-komodo.py: every stack, rendered as Komodo's periphery would
+#             see it (env_file outside the checkout is unreadable there, PR #75)
+#   requests  scripts/rehearse-request.py: each added or edited ops request, run with fake
+#             ssh/curl/sleep (nested quoting, shell errors, long commands Warpgate would cut, PR #74)
+# Undo: delete this file and the two scripts.
+# Waits in ops/pending-workflows/ until the owner moves it to .github/workflows/ (README there).
+name: ops-check
+
+on:
+  pull_request:
+    paths:
+      - "docker-compose/**"
+      - "ops/requests/**"
+      - "scripts/check-compose-komodo.py"
+      - "scripts/rehearse-request.py"
+      - ".github/workflows/ops-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ops-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ops-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compose as Komodo sees it
+        run: python3 scripts/check-compose-komodo.py
+      - name: Rehearse ops requests
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          mapfile -t reqs < <(git diff --diff-filter=AM --name-only "origin/$BASE_REF...HEAD" -- 'ops/requests/*.sh')
+          [ ${#reqs[@]} -gt 0 ] || { echo "No ops requests added or edited."; exit 0; }
+          python3 -I scripts/rehearse-request.py "${reqs[@]}"

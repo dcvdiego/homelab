@@ -15,6 +15,8 @@ With fake data, a request usually stops at its first real check (`CHECK FAILED`,
 reply). That is expected and not an error; the report says how many remote commands were reached.
 
 Usage: rehearse-request.py ops/requests/<name>.sh ...
+Note: the remote command is the ssh arguments joined with spaces and re-parsed by the remote shell,
+exactly as ssh does it, so a payload split across ssh arguments is checked as the remote sees it.
 Undo: delete this file and its step in .github/workflows/ops-check.yml.
 """
 import os
@@ -27,15 +29,19 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-LONG = re.compile(r"\b(tar|rsync|du|pg_dump|pg_dumpall|mysqldump|mariadb-dump|vzdump|zstd|gzip|xz|docker pull|docker image pull|cp -a|cp -r)\b")
+# a command word: at the start or after a separator, so "x.tar.gz" or "--rsync" don't match
+LONG = re.compile(r"(?:^|[\s;&|(`]|\$\()(tar|rsync|du|pg_dump|pg_dumpall|mysqldump|mariadb-dump|vzdump|zstd|gzip|xz|docker pull|docker image pull|cp -a|cp -r)(?=\s)")
 DETACHED = re.compile(r"\b(setsid|nohup|systemd-run)\b")
 SHELL_ERR = re.compile(r"(syntax error|unbound variable|command not found|unexpected EOF|bad substitution)")
-DUMMY_ENV = {
-    "KOMODO_URL": "http://komodo.invalid", "KOMODO_API_KEY": "x", "KOMODO_API_SECRET": "x",
-    "CF_TOKEN": "x", "CF_ACCOUNT": "x", "CF_ZONE": "x", "CF_TUNNEL": "x",
-    "TECHNITIUM_TOWER_TOKEN": "x", "TECHNITIUM_PROD_TOKEN": "x",
-    "GITHUB_RUN_ID": "0", "GITHUB_SHA": "0" * 40,
-}
+
+
+def dummy_env() -> dict[str, str]:
+    """A dummy for every env value the apply job sets (.github/workflows/apply.yml), so a request that
+    uses one the job doesn't set fails here as it would there (unbound variable under bash -u)."""
+    names = re.findall(r"(?m)^\s+([A-Z][A-Z0-9_]+): \$\{\{", (ROOT / ".github/workflows/apply.yml").read_text())
+    env = {n: "x" for n in names}
+    env.update(KOMODO_URL="http://komodo.invalid", GITHUB_RUN_ID="0", GITHUB_SHA="0" * 40)
+    return env
 
 
 def nested_check(cmd: str, where: str, depth: int = 0) -> list[str]:
@@ -94,7 +100,7 @@ def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
         cfg = pathlib.Path(d, "ssh_config")
         cfg.write_text("Host pve\n  HostName pve.invalid\n")
         log = pathlib.Path(d, "log")
-        env = {**os.environ, **DUMMY_ENV, "PATH": f"{bin_}:{os.environ['PATH']}", "OPS_SSH_CONFIG": str(cfg),
+        env = {**os.environ, **dummy_env(), "PATH": f"{bin_}:{os.environ['PATH']}", "OPS_SSH_CONFIG": str(cfg),
                "REHEARSE_LOG": str(log), "GITHUB_WORKSPACE": str(ROOT)}
         try:
             r = subprocess.run(["bash", "-euo", "pipefail", str(req)], cwd=ROOT, env=env,

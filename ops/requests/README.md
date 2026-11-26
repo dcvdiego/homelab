@@ -47,7 +47,7 @@ results dir) and that the change matches the PR description.
 
 ## Before merge (CI)
 
-The `ops-check` workflow rehearses each added or edited request with fake `ssh`, `curl` and `sleep`
+The `ops-check` workflow (`.github/workflows/ops-check.yml`, proposed in `ops/pending-workflows/`) rehearses each added or edited request with fake `ssh`, `curl` and `sleep`
 (`scripts/rehearse-request.py`); nothing reaches the homelab. It fails on shell errors, on quoting
 errors in any nested layer of a remote command (`ssh` → `pct exec … sh -c '…'`), and on
 long-running work (tar, rsync, du, dumps, pulls) in a single SSH session, because Warpgate cuts
