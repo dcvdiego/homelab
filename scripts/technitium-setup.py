@@ -39,7 +39,6 @@ RECORDS = [
     ("prometheus",      "192.168.1.224"),
     ("uptime-kuma",     "192.168.1.224"),
     ("loki",            "192.168.1.224"),
-    ("influxdb",        "192.168.1.224"),
 
     # --- Media (docker-prod) ---
     # (records of the private repo's stacks: its docs/dns.md)

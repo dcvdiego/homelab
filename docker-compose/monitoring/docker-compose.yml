@@ -9,16 +9,28 @@ services:
       - "3100:3100"
     restart: unless-stopped
     command: -config.file=/etc/loki/loki-config.yml
+    # Caps stop a runaway from taking the host down; GOMEMLIMIT (~80% of the cap) makes the Go GC
+    # work harder before the cap is reached instead of growing until the kernel OOM-kills it.
+    mem_limit: 384m
+    environment:
+      - GOMEMLIMIT=300MiB
 
   alloy:
     container_name: alloy
     image: grafana/alloy:v1.15.0@sha256:579582bce40049f2e27bd1e445000689c907a41f0495cb0d0c7f65609316ba7c
     restart: unless-stopped
+    hostname: docker-prod  # becomes the cAdvisor metrics' instance label
+    mem_limit: 512m
+    environment:
+      - GOMEMLIMIT=400MiB
     volumes:
-      - /docker/grafana-monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./config/alloy-config.alloy:/etc/alloy/config.alloy:ro  # from git, not a copy on the host
       - /docker/grafana-monitoring/alloy/data:/var/lib/alloy/data
       - /var/log:/var/log:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # cAdvisor (container CPU/memory/network): reads the cgroup tree and Docker's metadata
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -33,8 +45,12 @@ services:
     image: grafana/grafana-oss:12.0.2@sha256:b5b59bfc7561634c2d7b136c4543d702ebcc94a3da477f21ff26f89ffd4214fa
     environment:
       - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
+    mem_limit: 384m
     volumes:
-    - /docker/grafana-monitoring/grafana:/var/lib/grafana
+      - /docker/grafana-monitoring/grafana:/var/lib/grafana
+      # Data sources and dashboards from git (grafana/): Prometheus is the default, the InfluxDB ones are deleted
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -43,47 +59,45 @@ services:
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       # To enable Authentik forward auth: - "traefik.http.routers.grafana.middlewares=authentik-forwardauth@docker"
 
-  influxdb:
-    container_name: influxdb
-    image: influxdb:2.8.0@sha256:37c75d2588b1f5e7d75f21df9d593a213a4a0a2d5b1c1220728d01b3cb5ee1c4
-    restart: unless-stopped
-    ports:
-      - 8086:8086
-      - 8089:8089/udp
-    volumes:
-      - /docker/grafana-monitoring/influxdb:/var/lib/influxdb2
-
-  telegraf:
-    container_name: telegraf
-    restart: unless-stopped
-    volumes:
-        - '/docker/grafana-monitoring/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro'
-        - '/:/hostfs:ro'
-        - '/var/run/docker.sock:/var/run/docker.sock'
-        - '/docker/grafana-monitoring/telegraf/mibs:/usr/share/snmp/mibs'
-    environment:
-        - HOST_ETC=/hostfs/etc
-        - HOST_PROC=/hostfs/proc
-        - HOST_SYS=/hostfs/sys
-        - HOST_VAR=/hostfs/var
-        - HOST_RUN=/hostfs/run
-        - HOST_MOUNT_PREFIX=/hostfs
-    image: telegraf:1.38.2@sha256:74fa2ce3d3e0eba543bf67d022c1c6bd7e7716f0cabb53641b5696a4bd915c6f
-    user: telegraf:999
-
   prometheus:
     image: prom/prometheus:v3.11.1@sha256:759ea6db49103737f2a6f420b0d1632062d8ad99dec086c76db605fd0bf23e15
     container_name: prometheus
     restart: unless-stopped
     ports:
       - 9090:9090
+    # The image's own two flags, plus: keep 30 days (default 15) but never more than 5 GB on disk,
+    # and accept Alloy's cAdvisor metrics by remote write. Data stays in the image's /prometheus volume.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=5GB
+      - --web.enable-remote-write-receiver
+    mem_limit: 768m
+    environment:
+      - GOMEMLIMIT=600MiB
     volumes:
-      - /docker/grafana-monitoring/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro  # from git, not a copy on the host
+
+  # Proxmox host and guest metrics (CPU, memory, disk, network per LXC) for Prometheus. Read-only API
+  # token (user prometheus@pve, role PVEAuditor) in an env file the ops request writes; never in git.
+  pve-exporter:
+    container_name: pve-exporter
+    image: prompve/prometheus-pve-exporter:3.12.0@sha256:e49466559449074596e762dd09c9a76c9be9b6a1ffacf7bc8ceb827169cb180e
+    restart: unless-stopped
+    init: true
+    mem_limit: 128m
+    env_file:
+      - path: /docker/grafana-monitoring/pve-exporter/pve.env  # PVE_USER, PVE_TOKEN_NAME, PVE_TOKEN_VALUE
+        required: false
+    environment:
+      - PVE_VERIFY_SSL=false  # pvehost's self-signed certificate; LAN only
 
   uptime-kuma:
     image: louislam/uptime-kuma:2.2.1@sha256:7337368a77873f159435de9ef09567f68c31285ed5f951dec36256c4b267ee44
     container_name: uptime-kuma
     restart: unless-stopped
+    mem_limit: 1g  # node + its embedded MariaDB (~600 MB together today)
     volumes:
       - /docker/uptime-kuma:/app/data
     labels:

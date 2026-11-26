@@ -213,11 +213,8 @@
     "crowdsecurity/crowdsec": {
       "github": "crowdsecurity/crowdsec"
     },
-    "telegraf": {
-      "github": "influxdata/telegraf"
-    },
-    "influxdb": {
-      "github": "influxdata/influxdb"
+    "prompve/prometheus-pve-exporter": {
+      "github": "prometheus-pve/prometheus-pve-exporter"
     },
     "grafana/loki": [
       {
