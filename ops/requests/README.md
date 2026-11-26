@@ -53,7 +53,7 @@ commands that could reach a host are faked, only text tools such as `jq` and `se
 writes go to a scratch directory, so nothing reaches the homelab. Remote commands are parsed into a
 syntax tree, including every nested `sh -c` and heredocs fed to `sh -s`. It fails on shell errors, on quoting
 errors in any nested layer of a remote command (`ssh` → `pct exec … sh -c '…'`), and on
-long-running work (tar, rsync, du, dumps, pulls) in a single SSH session, because Warpgate cuts
+long-running work (tar, rsync, du, dumps, pulls, builds, `docker compose up`) in a single SSH session, because Warpgate cuts
 sessions after about 5 minutes: run those detached with `setsid` and poll. If such a command is
 known to be quick, name it in a line `# rehearse: allow-long <command> <why>` (e.g.
 `# rehearse: allow-long du small dir`): findings for every use of that command in the request

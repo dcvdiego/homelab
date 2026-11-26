@@ -26,7 +26,7 @@ func TestFixtures(t *testing.T) {
 		"long-tar.sh":             {errors: []string{"(tar)"}},
 		"long-detached.sh":        {errors: []string{"(rsync)"}},
 		"allow-long.sh":           {errors: []string{"(tar)"}, warnings: []string{"(du)"}},
-		"docker-pull.sh":          {errors: []string{"(docker pull)", "(docker pull)", "(docker save)"}},
+		"docker-pull.sh":          {errors: []string{"(docker pull)", "(docker pull)", "(docker save)", "(docker compose up)"}},
 		"cmdsubst.sh":             {errors: []string{"(du)"}},
 		"unbound.sh":              {errors: []string{"NOT_SET_BY_APPLY"}},
 		"apply-env.sh":            {exit: "0"},

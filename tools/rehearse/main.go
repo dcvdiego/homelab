@@ -103,7 +103,7 @@ var shells = set("sh", "bash", "dash", "/bin/sh", "/bin/bash", "/usr/bin/env sh"
 var longCmds = set("tar", "rsync", "du", "pg_dump", "pg_dumpall", "mysqldump", "mariadb-dump", "vzdump",
 	"zstd", "gzip", "xz", "scp")
 
-var allowRe = regexp.MustCompile(`(?m)^# rehearse: allow-long (docker (?:image |compose )?(?:pull|save|load)|cp -a|cp -r|\S+)`)
+var allowRe = regexp.MustCompile(`(?m)^# rehearse: allow-long (docker (?:image |compose )?(?:pull|save|load|build|up)|cp -a|cp -r|\S+)`)
 
 func set(xs ...string) map[string]bool {
 	m := map[string]bool{}
@@ -334,6 +334,8 @@ func longKey(s string) string {
 	switch s {
 	case "docker image pull", "docker compose pull":
 		return "docker pull"
+	case "docker image build":
+		return "docker build"
 	case "docker image save":
 		return "docker save"
 	case "docker image load":
@@ -485,7 +487,7 @@ var wrapperOpts = map[string]map[string]bool{
 }
 
 // dockerLong names a docker subcommand that can take minutes: pulls (docker pull, docker image pull,
-// docker compose pull) and image save/load. Flags before the subcommand are skipped.
+// docker compose pull), image save/load, builds, and docker compose up (which pulls first). Flags before the subcommand are skipped.
 func dockerLong(args []string) string {
 	// options that take a separate value (docker's own and docker compose's)
 	withValue := set("-H", "--host", "-c", "--context", "--config", "-l", "--log-level", "-f", "--file",
@@ -502,12 +504,17 @@ func dockerLong(args []string) string {
 		}
 	}
 	j := strings.Join(words, " ") + " "
-	for _, p := range []string{"pull ", "image pull ", "compose pull ", "save ", "image save ", "load ", "image load "} {
+	for _, p := range []string{"pull ", "image pull ", "compose pull ", "save ", "image save ", "load ", "image load ",
+		"compose up ", "compose build ", "build ", "image build "} {
 		if strings.HasPrefix(j, p) {
-			if strings.Contains(p, "pull") {
+			switch w := strings.Fields(p); {
+			case w[len(w)-1] == "pull":
 				return "docker pull"
+			case w[0] == "compose":
+				return "docker compose " + w[1] // up pulls missing or changed images first
+			default:
+				return "docker " + w[len(w)-1]
 			}
-			return "docker " + strings.Fields(p)[len(strings.Fields(p))-1]
 		}
 	}
 	return ""
