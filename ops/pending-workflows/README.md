@@ -5,14 +5,15 @@ change what runs in CI). Workflow changes are proposed here and moved into place
 
 | File | Goes to | What |
 |---|---|---|
+| `ops-check.yml` | `.github/workflows/ops-check.yml` (new) | Before merge: renders every stack as Komodo's periphery sees it (scripts/check-compose-komodo.py) and rehearses added or edited ops requests with fake ssh/curl (scripts/rehearse-request.py); no secrets, read-only |
 | `release-notes.yml` | `.github/workflows/release-notes.yml` (new) | Comments the official upgrade notes of pending image updates on the Renovate dashboard issue and on PRs that change versions (scripts/release-notes.py) |
 
 From the owner's machine, after the PR that added them is merged:
 
 ```bash
 git switch main && git pull
-git mv -f ops/pending-workflows/release-notes.yml .github/workflows/release-notes.yml
-git commit -m "Install release-notes workflow" && git push
+git mv -f ops/pending-workflows/<file>.yml .github/workflows/<file>.yml
+git commit -m "Install <file> workflow" && git push
 ```
 
 No repository settings change is needed: the workflow asks for write access only to comment
