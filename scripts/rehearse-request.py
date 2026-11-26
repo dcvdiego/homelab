@@ -73,20 +73,24 @@ def ssh_stub(args: list[str]) -> int:
     """Called as `ssh`: record the remote command, check it, print nothing, succeed."""
     i = 0
     while i < len(args) and args[i].startswith("-"):
-        i += 2 if args[i] in ("-F", "-i", "-o", "-p", "-l", "-J") else 1
+        i += 2 if args[i] in ("-F", "-i", "-o", "-p", "-l", "-J", "-b", "-c", "-E", "-L", "-R", "-D", "-W") else 1
     remote = " ".join(args[i + 1:])
     if not sys.stdin.isatty():
         sys.stdin.read()
     log = pathlib.Path(os.environ["REHEARSE_LOG"])
-    where = f"ssh {args[i] if i < len(args) else '?'} #{sum(1 for l in log.open() if l.startswith('CMD\t')) + 1 if log.exists() else 1}"
+    n = sum(1 for line in log.open() if line.startswith("CMD\t")) + 1 if log.exists() else 1
+    where = f"ssh {args[i] if i < len(args) else '?'} #{n}"
     with log.open("a") as fh:
         fh.write(f"CMD\t{where}\n")
         for p in nested_check(remote, where):
             fh.write(f"ERR\t{p}\n")
-        m = LONG.search(remote)
-        if m and not DETACHED.search(remote):
+        for m in LONG.finditer(remote):
+            # heuristic: detached if setsid/nohup/systemd-run comes earlier on the same line
+            line_start = remote.rfind("\n", 0, m.start()) + 1
+            if DETACHED.search(remote[line_start:m.start()]):
+                continue
             fh.write(f"WARN\t{m.group(1)}\t{where}: long-running command in one SSH session (Warpgate cuts sessions after"
-                     f" ~5 min); detach with setsid and poll if it can take minutes:\n    {remote[:300]}\n")
+                     f" ~5 min); detach with setsid and poll if it can take minutes:\n    {remote[line_start:line_start + 300].splitlines()[0]}\n")
     return 0
 
 
