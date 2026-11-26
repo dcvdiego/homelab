@@ -66,6 +66,34 @@ var realTools = set("jq", "sed", "grep", "egrep", "head", "tail", "sort", "uniq"
 	"fold", "paste", "expr", "numfmt", "fmt", "nl", "true", "false", "cat", "printf", "echo",
 	"tac", "comm", "join", "diff", "cmp", "test", "[")
 
+// writesFiles reports whether a text tool would write a file itself (bypassing the scratch mapping).
+func writesFiles(tool string, args []string) bool {
+	switch tool {
+	case "sort", "numfmt":
+		for _, a := range args {
+			if a == "-o" || strings.HasPrefix(a, "--output") || (strings.HasPrefix(a, "-o") && tool == "sort") {
+				return true
+			}
+		}
+	case "sed":
+		for _, a := range args {
+			if a == "-i" || strings.HasPrefix(a, "-i") || strings.HasPrefix(a, "--in-place") ||
+				(strings.HasPrefix(a, "-") && !strings.HasPrefix(a, "--") && strings.Contains(a, "i")) {
+				return true
+			}
+		}
+	case "uniq":
+		n := 0
+		for _, a := range args {
+			if !strings.HasPrefix(a, "-") {
+				n++
+			}
+		}
+		return n >= 2
+	}
+	return false
+}
+
 var shells = set("sh", "bash", "dash", "/bin/sh", "/bin/bash", "/usr/bin/env sh")
 
 var longCmds = set("tar", "rsync", "du", "pg_dump", "pg_dumpall", "mysqldump", "mariadb-dump", "vzdump",
@@ -134,7 +162,32 @@ func Rehearse(root, req string, timeout time.Duration) Result {
 	}
 
 	faked := map[string]bool{}
+	var blocked func(dir, p string) bool
 	var stdout, stderr bytes.Buffer
+	// Reads are limited to files git tracks in the checkout, the scratch directory and /dev, so a
+	// request rehearsed on a machine with untracked secrets (.env) can't read them.
+	tracked := map[string]bool{}
+	if out, err := exec.Command("git", "-C", root, "ls-files", "-z").Output(); err == nil {
+		for _, f := range strings.Split(string(out), "\x00") {
+			if f != "" {
+				tracked[filepath.Join(root, f)] = true
+			}
+		}
+	}
+	blocked = func(dir, p string) bool {
+		if p == "" || strings.HasPrefix(p, "-") {
+			return false
+		}
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(dir, p)
+		}
+		p = filepath.Clean(p)
+		fi, err := os.Stat(p)
+		if err != nil || fi.IsDir() {
+			return false // not a file: an argument like a pattern, or something that doesn't exist here
+		}
+		return !tracked[p] && !strings.HasPrefix(p, scratch+string(os.PathSeparator)) && !strings.HasPrefix(p, "/dev/")
+	}
 	// mapped returns the scratch copy of a file the request wrote, or "".
 	mapped := func(dir, p string) string {
 		if p == "" || strings.HasPrefix(p, "-") {
@@ -173,7 +226,16 @@ func Rehearse(root, req string, timeout time.Duration) Result {
 			return nil
 		case base == "sleep":
 			return nil
+		case realTools[base] && writesFiles(base, args[1:]):
+			faked[base+" (writes a file)"] = true
+			return nil
 		case realTools[base]:
+			for _, a := range args[1:] {
+				if blocked(hc.Dir, a) {
+					fmt.Fprintf(hc.Stderr, "rehearse: %s: read of %s blocked (only files git tracks are readable)\n", base, a)
+					return interp.NewExitStatus(1)
+				}
+			}
 			for i := 1; i < len(args); i++ { // files the request wrote are read from the scratch copy
 				if m := mapped(hc.Dir, args[i]); m != "" {
 					args[i] = m
@@ -211,6 +273,9 @@ func Rehearse(root, req string, timeout time.Duration) Result {
 		}
 		if _, err := os.Stat(mapped); err == nil {
 			return os.Open(mapped)
+		}
+		if blocked("/", abs) {
+			return nil, fmt.Errorf("rehearse: read of %s blocked (only files git tracks are readable)", path)
 		}
 		return interp.DefaultOpenHandler()(ctx, abs, flag, perm)
 	}
@@ -348,6 +413,20 @@ func (c *checker) call(args []string, src string, line int, stdin string, detach
 				args = args[1:]
 			}
 			continue
+		case "xargs":
+			args = dropOpts(args[1:], set("-n", "--max-args", "-I", "-i", "-P", "--max-procs", "-d", "--delimiter",
+				"-L", "--max-lines", "-a", "--arg-file", "-s", "--max-chars", "-E", "-e"))
+			continue
+		case "find":
+			if i := indexAny(args, "-exec", "-execdir", "-ok", "-okdir"); i >= 0 {
+				rest := args[i+1:]
+				if j := indexAny(rest, ";", "+"); j >= 0 {
+					rest = rest[:j]
+				}
+				args = rest
+				continue
+			}
+			return
 		case "pct", "lxc-attach":
 			if i := indexOf(args, "--"); i >= 0 && (a == "lxc-attach" || (len(args) > 1 && args[1] == "exec")) {
 				args = args[i+1:]
@@ -453,6 +532,17 @@ func hasAnyFlag(args []string, letters string) bool {
 		}
 	}
 	return false
+}
+
+func indexAny(xs []string, ss ...string) int {
+	for i, x := range xs {
+		for _, s := range ss {
+			if x == s {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func indexOf(xs []string, s string) int {

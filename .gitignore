@@ -63,3 +63,4 @@ terraform.rc
 TODO.md
 session-*.md
 __pycache__/
+tools/rehearse/testdata/untracked-secret.env

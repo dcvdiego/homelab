@@ -38,7 +38,15 @@ func TestFixtures(t *testing.T) {
 		"wrappers.sh":             {errors: []string{"(tar)", "(tar)", "(tar)"}},
 		"wrapper-shell.sh":        {errors: []string{"syntax error at depth 1"}},
 		"command-v.sh":            {},
+		"xargs-find.sh":           {errors: []string{"(tar)", "(rsync)"}},
+		"real-writes.sh":          {exit: "0"},
+		"untracked-read.sh":       {exit: "1"},
 	}
+	secret := filepath.Join("testdata", "untracked-secret.env") // created here, never committed
+	if err := os.WriteFile(secret, []byte("CF_TOKEN=leak\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(secret)
 	for name, w := range cases {
 		t.Run(name, func(t *testing.T) {
 			res := Rehearse(root, filepath.Join("testdata", name), 3*time.Second)
@@ -56,6 +64,11 @@ func TestFixtures(t *testing.T) {
 				t.Errorf("exit %s, want %s (last output: %s)", res.Exit, w.exit, res.LastOut)
 			}
 		})
+	}
+	for _, f := range []string{"/tmp/rehearse-sort-out", "/tmp/rehearse-sed-in-place"} {
+		if _, err := os.Stat(f); err == nil {
+			t.Errorf("real-writes.sh wrote %s", f)
+		}
 	}
 	if _, err := os.Stat("/root/rehearse-test-file"); err == nil {
 		t.Error("writes-sandboxed.sh wrote outside the scratch directory")
