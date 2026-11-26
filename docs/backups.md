@@ -97,12 +97,14 @@ ntfy runs on docker-prod (`docker-compose/ntfy`), topic `homelab`, `auth-default
 
 `scripts/db-dumps.sh` (installed at `/docker/scripts/db-dumps.sh` in CT 101, root-only):
 
-- Postgres (`security-postgresql-1`, `tandoor-db`, `nextcloud-db`, `zulip-database`, `strapiDB`, `windmill-db`):
+- Postgres (`security-postgresql-1`, `tandoor-db`, `nextcloud-db`, `zulip-database`, `windmill-db`):
   `pg_dumpall` inside each container. MariaDB (every container from the `mariadb` image, found by image, so also the private repo's
   stacks'): `mariadb-dump --all-databases
   --single-transaction`. CouchDB (`obsidian-livesync`): `_all_docs?include_docs=true&attachments=true` per DB.
 - Credentials come from each container's own environment, inside the container.
 - A dump counts only if it is valid gzip, non-empty and ends with the tool's completion marker.
+- A container that is gone, or was stopped on purpose (exit code 0, e.g. its stack stopped in Komodo), is skipped
+  without alerting, and its newest dump is kept past retention. A crashed one (non-zero exit) still fails and alerts.
 - Status: `/docker/db-dumps/.last-run`, log `/var/log/db-dumps.log`, and an Uptime Kuma push
   monitor "Backups: database dumps (push)" (25h interval) if `/docker/scripts/db-dumps.env` has
   `KUMA_PUSH_URL` (root-only, not in git; token is `KUMA_PUSH_DB_DUMPS` in the owner's `.env`).

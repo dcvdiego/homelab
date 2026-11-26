@@ -36,6 +36,20 @@ push() {
     || log "warn: Uptime Kuma push failed"
 }
 
+# skip <container>: true when there is nothing to dump: the container is gone, or it was stopped on
+# purpose (exited with code 0, e.g. a stack stopped in Komodo). Its newest dump is then kept past
+# retention, so a stopped app keeps one restorable copy. A crashed container (non-zero exit) is
+# not skipped: its dump fails and alerts.
+SKIPPED=()
+skip() {
+  local state
+  state=$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$1" 2>/dev/null) \
+    || { log "skip $1 (no such container)"; return 0; }
+  [ "$state" = "exited 0" ] || return 1
+  log "skip $1 (stopped)"
+  SKIPPED+=("$1")
+}
+
 # finish <name> <tmpfile> <final> <dump-exit-code> <check-regex> <last-n-lines>
 # The dump command must have exited 0, the file must be valid gzip and non-empty, and its last
 # <n> lines must match the tool's "completed" marker (written only when the tool finishes).
@@ -53,7 +67,8 @@ finish() {
 }
 
 # Postgres: full cluster dump (all databases, roles) as the container's own superuser.
-for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database strapiDB windmill-db; do
+for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database windmill-db; do
+  skip "$c" && continue
   f="$OUT/$c-$STAMP.sql.gz"
   docker exec "$c" sh -c 'pg_dumpall -U "$POSTGRES_USER"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
   finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" 'PostgreSQL database cluster dump complete' 5
@@ -64,6 +79,7 @@ done
 # Password passed via MYSQL_PWD inside the container, not on argv. The root password env var is
 # MARIADB_ROOT_PASSWORD or the older MYSQL_ROOT_PASSWORD.
 for c in $(docker ps -a --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^(docker\.io\/(library\/)?)?mariadb[:@]/ {print $1}' | sort); do
+  skip "$c" && continue
   f="$OUT/$c-$STAMP.sql.gz"
   docker exec "$c" sh -c 'D=$(command -v mariadb-dump || command -v mysqldump); MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" "$D" -uroot --all-databases --single-transaction --routines --events' \
     2>>"$OUT/.errors.log" | gzip > "$f.tmp"
@@ -89,8 +105,17 @@ docker exec "$c" sh -c '
   printf "\n}\n"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
 finish "$c" "$f.tmp" "$f" "${PIPESTATUS[0]}" '^\}$' 1
 
-# Retention
-find "$OUT" -maxdepth 1 -type f \( -name '*.sql.gz' -o -name '*.json.gz' \) -mtime +"$KEEP_DAYS" -delete
+# Retention, except the newest dump of each skipped (stopped) container
+KEEP=()
+for c in ${SKIPPED[@]+"${SKIPPED[@]}"}; do
+  n=$(ls -t "$OUT/$c"-[0-9]*.gz 2>/dev/null | head -n1)
+  [ -n "$n" ] && KEEP+=("$n")
+done
+find "$OUT" -maxdepth 1 -type f \( -name '*.sql.gz' -o -name '*.json.gz' \) -mtime +"$KEEP_DAYS" -print0 |
+  while IFS= read -r -d '' f; do
+    for k in ${KEEP[@]+"${KEEP[@]}"}; do [ "$f" = "$k" ] && continue 2; done
+    rm -f -- "$f"
+  done
 
 if [ ${#FAILED[@]} -gt 0 ]; then
   log "finished with failures: ${FAILED[*]}"
@@ -98,6 +123,7 @@ if [ ${#FAILED[@]} -gt 0 ]; then
   push down "failed: ${FAILED[*]}"
   exit 1
 fi
+[ ${#SKIPPED[@]} -eq 0 ] || log "skipped (stopped): ${SKIPPED[*]}"
 log "finished: all dumps ok"
 printf '%s OK\n' "$(date -Is)" > "$OUT/.last-run"
 push up "all dumps ok"

@@ -41,7 +41,7 @@ services:
 # Deployment steps:
 #
 # 1. Choose a strong CROWDSEC_BOUNCER_KEY (any random string, e.g. openssl rand -hex 32)
-#    Set it in BOTH this stack AND the traefik stack env vars in Portainer.
+#    Set it in BOTH this stack AND the traefik stack environment in Komodo.
 #
 # 2. Deploy this stack (CrowdSec will auto-register the bouncer on startup).
 #

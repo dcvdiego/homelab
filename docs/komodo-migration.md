@@ -1,6 +1,6 @@
 # Portainer → Komodo migration plan
 
-## Status: done 2026-10-07 (Portainer stopped the same day; its data volume kept until ~2026-10-14)
+## Status: done 2026-10-07 (Portainer stopped the same day; its containers, data volume and DNS name removed 2026-11)
 
 Done by an agent through the access model in [agent-access.md](agent-access.md): PRs by the
 `homelabsito[bot]` app, ops requests run by the `homelab-ops` runner, attended `pve-root` sessions.

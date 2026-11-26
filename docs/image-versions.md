@@ -33,7 +33,7 @@ Kinds:
 | `ghcr.io/immich-app/postgres` | photos | companion | Use the image (with digest) from the release's `docker-compose.yml`. | [release compose](https://github.com/immich-app/immich/releases) |
 | `docker.io/redis` | photos | companion | Immich ≥ 2.x composes use `valkey/valkey:9@sha256:…` instead (see catch-up). | [release compose](https://github.com/immich-app/immich/releases) |
 | `ghcr.io/goauthentik/server` | security | sequential | Never skip a release line (each `YYYY.M`); back up the DB first; no downgrades; outposts on the same version. 2025.10 removed Redis. | [upgrade](https://docs.goauthentik.io/install-config/upgrade/) |
-| `postgres` | security, nextcloud, recipes, backend_cms, windmill | companion (security, windmill) / db | authentik: the tag in its compose (`16-alpine`). Windmill: the tag in its release compose (`18`; 16 also supported until Nov 2028, but moving between them is a `pg_dumpall` + restore and a mount change). Others: Postgres majors need dump/restore. | [authentik compose](https://github.com/goauthentik/authentik/blob/main/lifecycle/container/compose.yml), [windmill: upgrade to 18](https://www.windmill.dev/docs/advanced/self_host/postgres_18_upgrade) |
+| `postgres` | security, nextcloud, recipes, windmill | companion (security, windmill) / db | authentik: the tag in its compose (`16-alpine`). Windmill: the tag in its release compose (`18`; 16 also supported until Nov 2028, but moving between them is a `pg_dumpall` + restore and a mount change). Others: Postgres majors need dump/restore. | [authentik compose](https://github.com/goauthentik/authentik/blob/main/lifecycle/container/compose.yml), [windmill: upgrade to 18](https://www.windmill.dev/docs/advanced/self_host/postgres_18_upgrade) |
 | `redis` | security, zulip, nextcloud | companion (security, zulip) / batch | authentik and Zulip: the tag in their compose (`alpine`). Nextcloud: a cache, any supported version. | [docker-zulip compose](https://github.com/zulip/docker-zulip/blob/main/compose.yaml) |
 | `vaultwarden/server` | security | review | Examples use `latest`; release notes flag client/config changes, so pin and read them. Back up `/data` first. | [wiki](https://github.com/dani-garcia/vaultwarden/wiki/Using-Docker-Compose) |
 | `ghcr.io/home-assistant/home-assistant` | haos | review | Docs use `stable`; monthly releases each have backward-incompatible changes, so pin `YYYY.M.x` and read them. | [install](https://www.home-assistant.io/installation/linux#docker-compose), [release notes](https://www.home-assistant.io/blog/categories/release-notes/) |
@@ -93,10 +93,8 @@ its own PR (Renovate opens most of them), merged in order:
 3. **Immich**: first switch `redis` and `database` to the images in the v2.7.5 release compose
    (`valkey/valkey:9@…`, `postgres:14-vectorchord0.4.3…@…`), then v3 (read the v3.0.0 breaking changes,
    update the phone apps first). Then delete the `allow_drift` entries in `scripts/image-policy.json`.
-4. **Strapi's database** (`backend_cms`): `postgres:12.0-alpine` is end of life; dump, move to a supported
-   major, restore.
-5. **cloudflared 2024.10.1**: outside Cloudflare's support window; update (Renovate's first review PR).
-6. **OpenThread Border Router**: pinned to the running build `sha-57d556f`. Renovate only understands the
+4. **cloudflared 2024.10.1**: outside Cloudflare's support window; update (Renovate's first review PR).
+5. **OpenThread Border Router**: pinned to the running build `sha-57d556f`. Renovate only understands the
    monthly `vYYYY.MM.x` tags, so move it to one by hand once (next haos change).
 
 ## Komodo itself
