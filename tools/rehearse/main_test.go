@@ -26,7 +26,7 @@ func TestFixtures(t *testing.T) {
 		"long-tar.sh":             {errors: []string{"(tar)"}},
 		"long-detached.sh":        {errors: []string{"(rsync)"}},
 		"allow-long.sh":           {errors: []string{"(tar)"}, warnings: []string{"(du)"}},
-		"docker-pull.sh":          {errors: []string{"(docker pull)"}},
+		"docker-pull.sh":          {errors: []string{"(docker pull)", "(docker pull)", "(docker save)"}},
 		"cmdsubst.sh":             {errors: []string{"(du)"}},
 		"unbound.sh":              {errors: []string{"NOT_SET_BY_APPLY"}},
 		"apply-env.sh":            {exit: "0"},
@@ -43,6 +43,7 @@ func TestFixtures(t *testing.T) {
 		"untracked-read.sh":       {exit: "1"},
 		"dir-read.sh":             {exit: "1"},
 		"string-tools.sh":         {exit: "0"},
+		"write-then-read.sh":      {exit: "0"},
 	}
 	secret := filepath.Join("testdata", "untracked-secret.env") // created here, never committed
 	if err := os.WriteFile(secret, []byte("CF_TOKEN=leak\n"), 0o600); err != nil {

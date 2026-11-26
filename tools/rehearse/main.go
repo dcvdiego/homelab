@@ -103,7 +103,7 @@ var shells = set("sh", "bash", "dash", "/bin/sh", "/bin/bash", "/usr/bin/env sh"
 var longCmds = set("tar", "rsync", "du", "pg_dump", "pg_dumpall", "mysqldump", "mariadb-dump", "vzdump",
 	"zstd", "gzip", "xz", "scp")
 
-var allowRe = regexp.MustCompile(`(?m)^# rehearse: allow-long (docker image pull|docker pull|cp -a|cp -r|\S+)`)
+var allowRe = regexp.MustCompile(`(?m)^# rehearse: allow-long (docker (?:image |compose )?(?:pull|save|load)|cp -a|cp -r|\S+)`)
 
 func set(xs ...string) map[string]bool {
 	m := map[string]bool{}
@@ -237,15 +237,12 @@ func Rehearse(root, req string, timeout time.Duration) Result {
 			faked[base+" (writes a file)"] = true
 			return nil
 		case realTools[base]:
-			for _, a := range args[1:] {
-				if !stringTools[base] && blocked(hc.Dir, a) {
-					fmt.Fprintf(hc.Stderr, "rehearse: %s: read of %s blocked (only files git tracks are readable)\n", base, a)
-					return interp.NewExitStatus(1)
-				}
-			}
-			for i := 1; i < len(args); i++ { // files the request wrote are read from the scratch copy
-				if m := mapped(hc.Dir, args[i]); m != "" {
+			for i := 1; i < len(args); i++ {
+				if m := mapped(hc.Dir, args[i]); m != "" { // a file the request wrote: read the scratch copy
 					args[i] = m
+				} else if !stringTools[base] && blocked(hc.Dir, args[i]) {
+					fmt.Fprintf(hc.Stderr, "rehearse: %s: read of %s blocked (only files git tracks are readable)\n", base, args[i])
+					return interp.NewExitStatus(1)
 				}
 			}
 			if base == "sed" {
@@ -335,8 +332,12 @@ var shellErr = regexp.MustCompile(`unbound variable|command not found|bad substi
 
 func longKey(s string) string {
 	switch s {
-	case "docker image pull":
+	case "docker image pull", "docker compose pull":
 		return "docker pull"
+	case "docker image save":
+		return "docker save"
+	case "docker image load":
+		return "docker load"
 	case "cp -a", "cp -r":
 		return "cp"
 	}
@@ -458,8 +459,8 @@ func (c *checker) call(args []string, src string, line int, stdin string, detach
 	}
 	key := name
 	switch {
-	case name == "docker" && len(args) > 1 && (args[1] == "pull" || (args[1] == "image" && len(args) > 2 && args[2] == "pull")):
-		key = "docker pull"
+	case name == "docker" && dockerLong(args[1:]) != "":
+		key = dockerLong(args[1:])
 	case name == "cp" && hasAnyFlag(args[1:], "aRr"):
 		key = "cp"
 	case !longCmds[name]:
@@ -481,6 +482,35 @@ var wrapperOpts = map[string]map[string]bool{
 	"sudo":    set("-u", "--user", "-g", "--group", "-C", "--close-from", "-D", "--chdir", "-h", "--host", "-p", "--prompt", "-r", "--role", "-t", "--type", "-U", "--other-user", "-T", "--command-timeout"),
 	"exec":    set("-a"),
 	"env":     set("-u", "--unset", "-C", "--chdir", "-S", "--split-string"),
+}
+
+// dockerLong names a docker subcommand that can take minutes: pulls (docker pull, docker image pull,
+// docker compose pull) and image save/load. Flags before the subcommand are skipped.
+func dockerLong(args []string) string {
+	// options that take a separate value (docker's own and docker compose's)
+	withValue := set("-H", "--host", "-c", "--context", "--config", "-l", "--log-level", "-f", "--file",
+		"-p", "--project-name", "--project-directory", "--env-file", "--profile", "--ansi", "--parallel")
+	var words []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case withValue[a]:
+			i++
+		case strings.HasPrefix(a, "-"):
+		default:
+			words = append(words, a)
+		}
+	}
+	j := strings.Join(words, " ") + " "
+	for _, p := range []string{"pull ", "image pull ", "compose pull ", "save ", "image save ", "load ", "image load "} {
+		if strings.HasPrefix(j, p) {
+			if strings.Contains(p, "pull") {
+				return "docker pull"
+			}
+			return "docker " + strings.Fields(p)[len(strings.Fields(p))-1]
+		}
+	}
+	return ""
 }
 
 // shellArgs reads sh/bash options: whether -c is given and its payload, or whether the shell reads
