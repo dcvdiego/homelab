@@ -44,6 +44,7 @@ pveum user list --noborder | awk '{print $1}' | grep -qx prometheus@pve \
 pveum acl modify / --users prometheus@pve --roles PVEAuditor
 pveum user token remove prometheus@pve exporter >/dev/null 2>&1 || true
 umask 077
+trap 'rm -f /root/pve.env' EXIT  # the token file never outlives this step, even if a command fails
 v=$(pveum user token add prometheus@pve exporter --privsep 0 --comment "pve-exporter" --output-format json \
   | perl -MJSON::PP -0777 -ne 'print decode_json($_)->{value} // ""')
 [ -n "$v" ] && [ "$v" != null ]
@@ -62,7 +63,8 @@ PVE "pct exec 101 -- sh -c 'set -e
   if [ -d /docker/grafana-monitoring/influxdb ]; then
     mkdir -p /docker/backups/retired; chmod 700 /docker/backups/retired
     a=/docker/backups/retired/influxdb-$TS.tar.gz
-    tar czf \$a -C /docker/grafana-monitoring influxdb telegraf && tar tzf \$a >/dev/null
+    d=influxdb; [ -d /docker/grafana-monitoring/telegraf ] && d=\"influxdb telegraf\"
+    tar czf \$a -C /docker/grafana-monitoring \$d && tar tzf \$a >/dev/null
     echo \"  archived: \$a (\$(du -h --apparent-size \$a | cut -f1))\"
     docker rm -f telegraf influxdb >/dev/null 2>&1 || true
     rm -rf /docker/grafana-monitoring/influxdb /docker/grafana-monitoring/telegraf
