@@ -71,8 +71,9 @@ func writesFiles(tool string, args []string) bool {
 	switch tool {
 	case "sort", "numfmt":
 		for _, a := range args {
-			if a == "-o" || strings.HasPrefix(a, "--output") || (strings.HasPrefix(a, "-o") && tool == "sort") {
-				return true
+			if strings.HasPrefix(a, "--output") || (tool == "sort" && strings.HasPrefix(a, "-") &&
+				!strings.HasPrefix(a, "--") && strings.ContainsRune(a[1:], 'o')) || a == "-o" {
+				return true // -o, -ro, -no out.txt...
 			}
 		}
 	case "sed":
@@ -93,6 +94,9 @@ func writesFiles(tool string, args []string) bool {
 	}
 	return false
 }
+
+// Real tools whose arguments are strings, never files to read.
+var stringTools = set("basename", "dirname", "expr", "seq", "date", "true", "false", "printf", "echo", "test", "[", "numfmt")
 
 var shells = set("sh", "bash", "dash", "/bin/sh", "/bin/bash", "/usr/bin/env sh")
 
@@ -182,11 +186,14 @@ func Rehearse(root, req string, timeout time.Duration) Result {
 			p = filepath.Join(dir, p)
 		}
 		p = filepath.Clean(p)
-		fi, err := os.Stat(p)
-		if err != nil || fi.IsDir() {
-			return false // not a file: an argument like a pattern, or something that doesn't exist here
+		if p == scratch || strings.HasPrefix(p, scratch+string(os.PathSeparator)) || strings.HasPrefix(p, "/dev/") {
+			return false
 		}
-		return !tracked[p] && !strings.HasPrefix(p, scratch+string(os.PathSeparator)) && !strings.HasPrefix(p, "/dev/")
+		fi, err := os.Stat(p)
+		if err != nil {
+			return false // doesn't exist here: a pattern or other plain argument
+		}
+		return fi.IsDir() || !tracked[p] // a directory would let grep -r / diff -r read untracked files
 	}
 	// mapped returns the scratch copy of a file the request wrote, or "".
 	mapped := func(dir, p string) string {
@@ -231,7 +238,7 @@ func Rehearse(root, req string, timeout time.Duration) Result {
 			return nil
 		case realTools[base]:
 			for _, a := range args[1:] {
-				if blocked(hc.Dir, a) {
+				if !stringTools[base] && blocked(hc.Dir, a) {
 					fmt.Fprintf(hc.Stderr, "rehearse: %s: read of %s blocked (only files git tracks are readable)\n", base, a)
 					return interp.NewExitStatus(1)
 				}

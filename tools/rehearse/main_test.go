@@ -41,6 +41,8 @@ func TestFixtures(t *testing.T) {
 		"xargs-find.sh":           {errors: []string{"(tar)", "(rsync)"}},
 		"real-writes.sh":          {exit: "0"},
 		"untracked-read.sh":       {exit: "1"},
+		"dir-read.sh":             {exit: "1"},
+		"string-tools.sh":         {exit: "0"},
 	}
 	secret := filepath.Join("testdata", "untracked-secret.env") // created here, never committed
 	if err := os.WriteFile(secret, []byte("CF_TOKEN=leak\n"), 0o600); err != nil {
@@ -65,7 +67,7 @@ func TestFixtures(t *testing.T) {
 			}
 		})
 	}
-	for _, f := range []string{"/tmp/rehearse-sort-out", "/tmp/rehearse-sed-in-place"} {
+	for _, f := range []string{"/tmp/rehearse-sort-out", "/tmp/rehearse-sort-out2", "/tmp/rehearse-sed-in-place"} {
 		if _, err := os.Stat(f); err == nil {
 			t.Errorf("real-writes.sh wrote %s", f)
 		}
