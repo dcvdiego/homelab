@@ -53,8 +53,8 @@ def main() -> int:
     files = [pathlib.Path(a).resolve() for a in sys.argv[1:]] or sorted(ROOT.glob("docker-compose/*/docker-compose.yml"))
     errors = [f"{f}: no such compose file" for f in files if not f.exists()]
     errors += [e for f in files if f.exists() for e in check(f)]
-    for e in errors:
-        print(f"::error::{e}")
+    for e in errors:  # a workflow command is one line
+        print("::error::" + e.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
     print(f"{len(files)} compose file(s) checked, {len(errors)} problem(s)")
     return 1 if errors else 0
 

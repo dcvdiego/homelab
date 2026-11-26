@@ -1,5 +1,5 @@
-# Catch what otherwise only fails in the apply job after merge. GitHub-hosted runner, no secrets;
-# nothing reaches the homelab.
+# Catch what otherwise only fails in the apply job after merge. GitHub-hosted runner, no secrets,
+# no route to the LAN; ssh/scp/rsync/curl are faked, so requests never connect to the homelab.
 #   compose   scripts/check-compose-komodo.py: every stack, rendered as Komodo's periphery would
 #             see it (env_file outside the checkout is unreadable there, PR #75)
 #   requests  scripts/rehearse-request.py: each added or edited ops request, run with fake

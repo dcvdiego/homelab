@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Rehearse ops requests on a CI runner with fake ssh, curl and sleep, before they run for real.
 
-Nothing reaches the homelab: `ssh` never connects, `curl` returns an empty body, `sleep` returns
-at once, and dummy values stand in for the apply job's secrets. What it catches:
+`ssh`, `scp` and `rsync` never connect, `curl` returns an empty body, `sleep` returns at once, and
+dummy values stand in for the apply job's secrets. This is not a sandbox: the request is PR code and
+runs on the GitHub-hosted runner like any other PR check (other tools, e.g. python3 or wget, are
+real), but the runner has no secrets and no route to the LAN, and the owner still reviews requests. What it catches:
   - shell errors in the request (syntax, unbound variables, missing commands), and shellcheck errors
   - quoting errors in every nested layer of a remote command: the remote shell, then each
     `sh -c '...'` / `bash -c '...'` inside it (e.g. `pct exec 101 -- sh -c '...'`), checked with -n
@@ -90,7 +92,8 @@ def ssh_stub(args: list[str]) -> int:
     where = f"ssh {args[i] if i < len(args) else '?'} #{n}"
     with log.open("a") as fh:
         fh.write(f"CMD\t{where}\n")
-        for p in nested_check(remote.split("\n", 1)[1] if "\n" in remote and stdin else remote, where):
+        parts = remote.split("\n", 1) if stdin and "\n" in remote else [remote]
+        for p in [e for part in parts for e in nested_check(part, where)]:  # the ssh command, then the heredoc
             fh.write(f"ERR\t{p}\n")
         for m in LONG.finditer(remote):
             # heuristic: detached if setsid/nohup/systemd-run comes earlier on the same line
