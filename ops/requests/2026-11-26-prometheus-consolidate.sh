@@ -51,6 +51,9 @@ v=$(pveum user token add prometheus@pve exporter --privsep 0 --comment "pve-expo
 printf 'PVE_USER=prometheus@pve\nPVE_TOKEN_NAME=exporter\nPVE_TOKEN_VALUE=%s\n' "$v" > /root/pve.env
 unset v
 pct exec 101 -- sh -c 'mkdir -p /docker/grafana-monitoring/pve-exporter && chmod 700 /docker/grafana-monitoring/pve-exporter'
+# root-only is enough: the file is the compose env_file, read by `docker compose` (root, via Komodo
+# Periphery) when the stack is deployed; the exporter receives the values as environment variables
+# and never opens the file, whatever user it runs as.
 pct push 101 /root/pve.env /docker/grafana-monitoring/pve-exporter/pve.env --perms 600 --user 0 --group 0
 rm -f /root/pve.env
 echo "  user prometheus@pve (PVEAuditor on /) and token exporter created; pve.env written in CT 101"
