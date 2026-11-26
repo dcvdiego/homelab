@@ -330,15 +330,21 @@ func (c *checker) call(args []string, src string, line int, stdin string, detach
 			detached = true
 			args = dropOpts(args[1:], set("-u", "--unit", "-p", "--property"))
 			continue
-		case "timeout", "nice", "ionice", "sudo", "exec", "command":
-			args = dropOpts(args[1:], set("-n", "-c", "-u", "-s", "-k"))
+		case "command":
+			if len(args) > 1 && (args[1] == "-v" || args[1] == "-V") {
+				return // `command -v rsync` only looks the command up
+			}
+			args = dropOpts(args[1:], nil)
+			continue
+		case "timeout", "nice", "ionice", "sudo", "exec":
+			args = dropOpts(args[1:], wrapperOpts[a])
 			if a == "timeout" && len(args) > 0 {
-				args = args[1:]
+				args = args[1:] // the duration
 			}
 			continue
 		case "env":
-			args = args[1:]
-			for len(args) > 0 && (strings.Contains(args[0], "=") || strings.HasPrefix(args[0], "-")) {
+			args = dropOpts(args[1:], wrapperOpts[a])
+			for len(args) > 0 && strings.Contains(args[0], "=") {
 				args = args[1:]
 			}
 			continue
@@ -379,6 +385,16 @@ func (c *checker) call(args []string, src string, line int, stdin string, detach
 	c.out = append(c.out, Finding{Error: true, Kind: key, Msg: fmt.Sprintf("%s: long-running command (%s) in one SSH session"+
 		" (Warpgate cuts sessions after ~5 min); detach with setsid and poll if it can take minutes:\n    %s",
 		c.where, key, firstLine(src, line))})
+}
+
+// Options that take a separate value, per wrapper command (the rest are flags).
+var wrapperOpts = map[string]map[string]bool{
+	"timeout": set("-s", "--signal", "-k", "--kill-after"),
+	"nice":    set("-n", "--adjustment"),
+	"ionice":  set("-c", "--class", "-n", "--classdata", "-p", "--pid", "-P", "--pgid", "-u", "--uid"),
+	"sudo":    set("-u", "--user", "-g", "--group", "-C", "--close-from", "-D", "--chdir", "-h", "--host", "-p", "--prompt", "-r", "--role", "-t", "--type", "-U", "--other-user", "-T", "--command-timeout"),
+	"exec":    set("-a"),
+	"env":     set("-u", "--unset", "-C", "--chdir", "-S", "--split-string"),
 }
 
 // shellArgs reads sh/bash options: whether -c is given and its payload, or whether the shell reads

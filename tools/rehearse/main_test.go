@@ -35,6 +35,9 @@ func TestFixtures(t *testing.T) {
 		"no-network.sh":           {exit: "0"},
 		"writes-sandboxed.sh":     {exit: "0"},
 		"endless.sh":              {errors: []string{"did not finish"}, exit: "timeout"},
+		"wrappers.sh":             {errors: []string{"(tar)", "(tar)", "(tar)"}},
+		"wrapper-shell.sh":        {errors: []string{"syntax error at depth 1"}},
+		"command-v.sh":            {},
 	}
 	for name, w := range cases {
 		t.Run(name, func(t *testing.T) {
