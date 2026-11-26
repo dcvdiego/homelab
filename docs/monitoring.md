@@ -7,7 +7,7 @@ are mounted from git (Komodo's checkout), so a merge plus a deploy changes them.
 |---|---|---|---|
 | Host CPU, memory, disk (pvehost, docker-prod, docker-tower) | node_exporter on each, scraped every 15s | Prometheus | Node Exporter Full |
 | Containers on docker-prod: CPU, memory, network, block I/O | Alloy's built-in cAdvisor, remote-written every 30s | Prometheus | Homelab → Docker containers (cAdvisor) |
-| Proxmox guests (each LXC's CPU, memory, disk, network), storage | `pve-exporter` → pvehost API, read-only token | Prometheus | Homelab → Proxmox (pve-exporter) |
+| Proxmox guests (each LXC's CPU, memory, disk, network), storage | `pve-exporter` → pvehost API, read-only token (`/docker/grafana-monitoring/pve-exporter/token` in CT 101) | Prometheus | Homelab → Proxmox (pve-exporter) |
 | Frigate | its `/api/metrics` | Prometheus | — |
 | Logs (all containers, `/var/log`) | Alloy | Loki, 14 days | Logging Dashboard via Loki, Logs / App |
 | Up/down, alerts to ntfy | Uptime Kuma | its embedded MariaDB | status page |

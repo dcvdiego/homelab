@@ -87,10 +87,16 @@ services:
     restart: unless-stopped
     init: true
     mem_limit: 128m
-    env_file:
-      - path: /docker/grafana-monitoring/pve-exporter/pve.env  # PVE_USER, PVE_TOKEN_NAME, PVE_TOKEN_VALUE
-        required: false
+    # The token is read from a file, not env_file: Komodo runs compose inside its periphery container,
+    # which can't see /docker/..., so an env_file there is silently skipped. A bind mount is resolved by
+    # the Docker daemon on the host and works. The directory is mounted (not the file) so a missing
+    # token can't make Docker create a directory in its place.
+    volumes:
+      - /docker/grafana-monitoring/pve-exporter:/run/pve:ro
     environment:
+      - PVE_USER=prometheus@pve
+      - PVE_TOKEN_NAME=exporter
+      - PVE_TOKEN_VALUE_FILE=/run/pve/token  # root-owned dir, file owned by the image's uid 101, mode 400
       - PVE_VERIFY_SSL=false  # pvehost's self-signed certificate; LAN only
 
   uptime-kuma:
