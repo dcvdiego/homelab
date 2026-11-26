@@ -7,7 +7,8 @@ at once, and dummy values stand in for the apply job's secrets. What it catches:
   - quoting errors in every nested layer of a remote command: the remote shell, then each
     `sh -c '...'` / `bash -c '...'` inside it (e.g. `pct exec 101 -- sh -c '...'`), checked with -n
     and never executed
-  - long-running work in a single SSH session (tar, rsync, du, dumps, pulls) not run detached:
+  - long-running work in a single SSH session (tar, rsync, du, dumps, pulls) not run detached, in
+    ssh arguments or a heredoc fed to `sh -s`/`bash -s`, and scp/rsync from the runner:
     Warpgate cuts sessions after ~5 minutes (PR #74); detach with setsid and poll, as in #75.
     This is an error. A request whose long-looking command is known to be quick names it in a line
     `# rehearse: allow-long <command> <why>` (e.g. `# rehearse: allow-long du small dir`), which makes
@@ -52,7 +53,9 @@ def nested_check(cmd: str, where: str, depth: int = 0) -> list[str]:
     if r.returncode:
         return [f"{where}: shell syntax error at depth {depth}: {r.stderr.strip()}\n    command: {cmd[:300]}"]
     try:
-        toks = shlex.split(cmd, comments=True)
+        lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)  # ; & | ( ) are separate tokens
+        lex.whitespace_split = True
+        toks = list(lex)
     except ValueError as e:
         return [f"{where}: unbalanced quotes at depth {depth}: {e}\n    command: {cmd[:300]}"]
     for i, t in enumerate(toks):
@@ -75,14 +78,16 @@ def ssh_stub(args: list[str]) -> int:
     while i < len(args) and args[i].startswith("-"):
         i += 2 if args[i] in ("-F", "-i", "-o", "-p", "-l", "-J", "-b", "-c", "-E", "-L", "-R", "-D", "-W") else 1
     remote = " ".join(args[i + 1:])
-    if not sys.stdin.isatty():
-        sys.stdin.read()
+    stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+    # `ssh pve 'bash -s' <<EOF` / `pct exec 101 -- sh -s`: the payload is the script, check it as one
+    if stdin and re.search(r"(?:^|\s)(?:ba)?sh(?:\s+-\w+)*\s+-\w*s\w*\s*$|(?:^|\s)(?:ba)?sh\s*$", remote):
+        remote = remote + "\n" + stdin
     log = pathlib.Path(os.environ["REHEARSE_LOG"])
     n = sum(1 for line in log.open() if line.startswith("CMD\t")) + 1 if log.exists() else 1
     where = f"ssh {args[i] if i < len(args) else '?'} #{n}"
     with log.open("a") as fh:
         fh.write(f"CMD\t{where}\n")
-        for p in nested_check(remote, where):
+        for p in nested_check(remote.split("\n", 1)[1] if "\n" in remote and stdin else remote, where):
             fh.write(f"ERR\t{p}\n")
         for m in LONG.finditer(remote):
             # heuristic: detached if setsid/nohup/systemd-run comes earlier on the same line
@@ -109,6 +114,9 @@ def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
         (bin_ / "ssh").write_text(f'#!/bin/sh\nexec python3 -I "{me}" --ssh-stub "$@"\n')
         (bin_ / "curl").write_text("#!/bin/sh\ncat >/dev/null 2>&1 </dev/null; exit 0\n")
         (bin_ / "sleep").write_text("#!/bin/sh\nexit 0\n")
+        for t in ("scp", "rsync"):  # these open their own SSH session through Warpgate
+            (bin_ / t).write_text(f'#!/bin/sh\nprintf "WARN\\t{t}\\t{t} on the runner: a copy through Warpgate is cut after ~5 min; '
+                                  f'fine for small files (allow-long {t})\\n    {t} %s\\n" "$*" >> "$REHEARSE_LOG"\n')
         for f in bin_.iterdir():
             f.chmod(0o755)
         cfg = pathlib.Path(d, "ssh_config")
