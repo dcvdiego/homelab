@@ -103,7 +103,7 @@ def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
         except subprocess.TimeoutExpired as e:
             txt = lambda v: v.decode(errors="replace") if isinstance(v, bytes) else (v or "")  # bytes or str by Python version
             out, rc = txt(e.stdout) + txt(e.stderr), "timeout"
-            errors.append("did not finish within 120 s with fake ssh/curl/sleep (a loop that never ends?)")
+            errors.append(f"did not finish within {os.environ.get('REHEARSE_TIMEOUT', '120')} s with fake ssh/curl/sleep (a loop that never ends?)")
         for line in out.splitlines():
             if SHELL_ERR.search(line):
                 errors.append(f"shell error: {line.strip()}")
