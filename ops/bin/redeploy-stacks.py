@@ -43,6 +43,9 @@ for ks in komodo("read", "ListStacks", {"limit": 500}):
     if not hits:
         continue
     covered |= hits
+    if not os.path.isdir(run_dir):  # folder deleted in this push: the stack is being retired, not deployed
+        print(f"{ks['name']}: {run_dir} no longer exists; not deploying (retire it with an ops request)")
+        continue
     if run_dir == "docker-compose/ops":
         print(f"::warning::{run_dir} changed: deploy the '{ks['name']}' stack from the Komodo UI")
         continue
