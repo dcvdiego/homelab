@@ -3,10 +3,12 @@
 # see the file and (required: false) silently skipped it. The exporter then looked for /etc/prometheus/pve.yml
 # and crash-looped. The stack now mounts the directory and reads PVE_TOKEN_VALUE_FILE=/run/pve/token.
 #   1. In CT 101, write the token value alone to /docker/grafana-monitoring/pve-exporter/token
-#      (uid 101 = the image's user, mode 400) from the existing pve.env, then delete pve.env.
-#      The value is never printed.
+#      (uid 101 = the image's user, mode 400) from the existing pve.env, which is kept (root, 600) so
+#      reverting needs nothing recreated. The value is never printed.
+#   PVE_TOKEN_VALUE_FILE is supported since 3.x: src/pve_exporter/config.py config_from_env (<VAR>_FILE).
 #   2. Redeploy monitoring and fail unless Proxmox metrics arrive.
-# Undo: revert this PR. The token keeps working; to remove it: pveum user delete prometheus@pve on pvehost.
+# Undo: revert this PR (pve.env is still there, though the old env_file never worked under Komodo). The token
+# keeps working; to remove it: pveum user delete prometheus@pve on pvehost.
 set -euo pipefail
 PVE() { ssh -F "$OPS_SSH_CONFIG" pve "$@"; }
 PROM=http://192.168.1.224:9090
@@ -24,9 +26,9 @@ else
   PVE "pct exec 101 -- sh -c 'set -e; umask 077
     v=\$(sed -n \"s/^PVE_TOKEN_VALUE=//p\" $D/pve.env); [ -n \"\$v\" ]
     printf %s\\\\n \"\$v\" > $D/token.tmp && chown 101:101 $D/token.tmp && chmod 400 $D/token.tmp
-    mv $D/token.tmp $D/token && rm -f $D/pve.env'" \
+    mv $D/token.tmp $D/token'" \
     || { echo "  could not read PVE_TOKEN_VALUE from $D/pve.env"; exit 1; }
-  echo "  token written ($D/token, uid 101, 400); pve.env removed"
+  echo "  token written ($D/token, uid 101, 400); pve.env kept"
 fi
 PVE "pct exec 101 -- stat -c '  %n %U:%G %a %s bytes' $D/token"
 
