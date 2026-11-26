@@ -44,3 +44,20 @@ done
 Read it like code that runs as root. In particular, check that it doesn't print or send a
 secret anywhere (`echo $CF_TOKEN`, `curl` to a host that isn't yours, writing it into the
 results dir) and that the change matches the PR description.
+
+## Before merge (CI)
+
+The `ops-check` workflow rehearses each added or edited request with fake `ssh`, `curl` and `sleep`
+(`scripts/rehearse-request.py`); nothing reaches the homelab. It fails on shell errors, on quoting
+errors in any nested layer of a remote command (`ssh` → `pct exec … sh -c '…'`), and on
+long-running work (tar, rsync, du, dumps, pulls) in a single SSH session, because Warpgate cuts
+sessions after about 5 minutes: run those detached with `setsid` and poll. If such a command is
+known to be quick, add a line `# rehearse: allow-long <why>` to make it a warning.
+Run it locally with `python3 scripts/rehearse-request.py ops/requests/<name>.sh`.
+
+It also renders every stack as Komodo's periphery sees it (`scripts/check-compose-komodo.py`):
+compose runs inside that container and can't read an `env_file` outside the stack's checkout or
+`/etc/komodo`. Bind mounts are fine; the host's Docker daemon resolves them.
+
+What it can't test: anything that depends on live state (permissions of files on a host, real
+tokens, how long a real archive takes). Each request still ends with checks that fail loudly.
