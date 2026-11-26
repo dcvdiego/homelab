@@ -9,8 +9,9 @@ at once, and dummy values stand in for the apply job's secrets. What it catches:
     and never executed
   - long-running work in a single SSH session (tar, rsync, du, dumps, pulls) not run detached:
     Warpgate cuts sessions after ~5 minutes (PR #74); detach with setsid and poll, as in #75.
-    This is an error; a request whose long-looking commands are known to be quick (a small tar,
-    du on a small dir) says so with a line `# rehearse: allow-long <why>`, which makes it a warning.
+    This is an error. A request whose long-looking command is known to be quick names it in a line
+    `# rehearse: allow-long <command> <why>` (e.g. `# rehearse: allow-long du small dir`), which makes
+    findings for that command, and only that one, warnings.
 With fake data, a request usually stops at its first real check (`CHECK FAILED`, an empty Komodo
 reply). That is expected and not an error; the report says how many remote commands were reached.
 
@@ -30,7 +31,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # a command word: at the start or after a separator, so "x.tar.gz" or "--rsync" don't match
-LONG = re.compile(r"(?:^|[\s;&|(`]|\$\()(tar|rsync|du|pg_dump|pg_dumpall|mysqldump|mariadb-dump|vzdump|zstd|gzip|xz|docker pull|docker image pull|cp -a|cp -r)(?=\s)")
+LONG = re.compile(r"(?:^|[\s;&|(`'\"]|\$\()(tar|rsync|du|pg_dump|pg_dumpall|mysqldump|mariadb-dump|vzdump|zstd|gzip|xz|docker pull|docker image pull|cp -a|cp -r)(?=\s)")
 DETACHED = re.compile(r"\b(setsid|nohup|systemd-run)\b")
 SHELL_ERR = re.compile(r"(syntax error|unbound variable|command not found|unexpected EOF|bad substitution)")
 
@@ -54,9 +55,17 @@ def nested_check(cmd: str, where: str, depth: int = 0) -> list[str]:
         toks = shlex.split(cmd, comments=True)
     except ValueError as e:
         return [f"{where}: unbalanced quotes at depth {depth}: {e}\n    command: {cmd[:300]}"]
-    for i, t in enumerate(toks[:-2]):
-        if t in ("sh", "bash", "/bin/sh", "/bin/bash") and toks[i + 1] in ("-c", "-ec", "-euc", "-eu"):
-            out += nested_check(toks[i + 2], where, depth + 1)
+    for i, t in enumerate(toks):
+        if t not in ("sh", "bash", "/bin/sh", "/bin/bash"):
+            continue
+        j = i + 1  # skip options (-e, -euo pipefail, -o errexit, +x) up to the one with c
+        while j < len(toks) and re.fullmatch(r"[-+][a-zA-Z]+", toks[j]):
+            has_c = "c" in toks[j]
+            j += 2 if toks[j].endswith("o") and not has_c else 1
+            if has_c:
+                if j < len(toks):
+                    out += nested_check(toks[j], where, depth + 1)
+                break
     return out
 
 
@@ -69,20 +78,21 @@ def ssh_stub(args: list[str]) -> int:
     if not sys.stdin.isatty():
         sys.stdin.read()
     log = pathlib.Path(os.environ["REHEARSE_LOG"])
-    where = f"ssh {args[i] if i < len(args) else '?'} #{sum(1 for _ in log.open()) + 1 if log.exists() else 1}"
+    where = f"ssh {args[i] if i < len(args) else '?'} #{sum(1 for l in log.open() if l.startswith("CMD\t")) + 1 if log.exists() else 1}"
     with log.open("a") as fh:
         fh.write(f"CMD\t{where}\n")
         for p in nested_check(remote, where):
             fh.write(f"ERR\t{p}\n")
-        if LONG.search(remote) and not DETACHED.search(remote):
-            fh.write(f"WARN\t{where}: long-running command in one SSH session (Warpgate cuts sessions after"
+        m = LONG.search(remote)
+        if m and not DETACHED.search(remote):
+            fh.write(f"WARN\t{m.group(1)}\t{where}: long-running command in one SSH session (Warpgate cuts sessions after"
                      f" ~5 min); detach with setsid and poll if it can take minutes:\n    {remote[:300]}\n")
     return 0
 
 
 def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
     errors, warns = [], []
-    allow_long = re.search(r"(?m)^# rehearse: allow-long\b", req.read_text()) is not None
+    allowed = set(re.findall(r"(?m)^# rehearse: allow-long (\S+(?: pull| -[ar])?)", req.read_text()))
     sc = shutil.which("shellcheck")
     if sc:
         r = subprocess.run([sc, "-S", "error", "-s", "bash", str(req)], capture_output=True, text=True)
@@ -121,11 +131,18 @@ def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
             if block.startswith("ERR\t"):
                 errors.append(block[4:].rstrip())
             elif block.startswith("WARN\t"):
-                (warns if allow_long else errors).append(block[5:].rstrip())
+                cmd, msg = block[5:].split("\t", 1)
+                (warns if cmd in allowed else errors).append(msg.rstrip())
         print(f"{req.relative_to(ROOT)}: reached {n_cmd} remote command(s), exit {rc} (non-zero is expected with fake data)")
         if out.strip():
             print("    last output: " + out.strip().splitlines()[-1][:200])
     return errors, warns
+
+
+def annotate(kind: str, file: str, msg: str) -> None:
+    """A GitHub workflow command is one line: escape % and newlines (they render as line breaks)."""
+    msg = msg.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::{kind} file={file}::{msg}")
 
 
 def main() -> int:
@@ -136,9 +153,9 @@ def main() -> int:
         req = pathlib.Path(a).resolve()
         errors, warns = rehearse(req)
         for w in warns:
-            print(f"::warning file={req.relative_to(ROOT)}::{w}")
+            annotate("warning", str(req.relative_to(ROOT)), w)
         for e in errors:
-            print(f"::error file={req.relative_to(ROOT)}::{e}")
+            annotate("error", str(req.relative_to(ROOT)), e)
         failed += bool(errors)
     return 1 if failed else 0
 
