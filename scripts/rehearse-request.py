@@ -78,7 +78,7 @@ def ssh_stub(args: list[str]) -> int:
     if not sys.stdin.isatty():
         sys.stdin.read()
     log = pathlib.Path(os.environ["REHEARSE_LOG"])
-    where = f"ssh {args[i] if i < len(args) else '?'} #{sum(1 for l in log.open() if l.startswith("CMD\t")) + 1 if log.exists() else 1}"
+    where = f"ssh {args[i] if i < len(args) else '?'} #{sum(1 for l in log.open() if l.startswith('CMD\t')) + 1 if log.exists() else 1}"
     with log.open("a") as fh:
         fh.write(f"CMD\t{where}\n")
         for p in nested_check(remote, where):
@@ -92,7 +92,7 @@ def ssh_stub(args: list[str]) -> int:
 
 def rehearse(req: pathlib.Path) -> tuple[list[str], list[str]]:
     errors, warns = [], []
-    allowed = set(re.findall(r"(?m)^# rehearse: allow-long (\S+(?: pull| -[ar])?)", req.read_text()))
+    allowed = set(re.findall(r"(?m)^# rehearse: allow-long (docker image pull|docker pull|cp -a|cp -r|\S+)", req.read_text()))
     sc = shutil.which("shellcheck")
     if sc:
         r = subprocess.run([sc, "-S", "error", "-s", "bash", str(req)], capture_output=True, text=True)
