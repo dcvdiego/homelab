@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily Proxmox host config export (before the 03:15 off-site backup)
+
+[Timer]
+OnCalendar=*-*-* 00:45
+Persistent=true
+
+[Install]
+WantedBy=timers.target

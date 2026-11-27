@@ -296,6 +296,20 @@
     },
     "alpine": {
       "link": "https://alpinelinux.org/releases/"
+    },
+    "ghcr.io/rustic-rs/rustic": [
+      {
+        "changelog": "https://raw.githubusercontent.com/rustic-rs/docs/main/src/breaking_changes.md",
+        "section": "^## \\d+\\.\\d+\\.\\d+",
+        "all": true,
+        "url": "https://rustic.cli.rs/docs/breaking_changes.html"
+      },
+      {
+        "github": "rustic-rs/rustic"
+      }
+    ],
+    "rclone/rclone": {
+      "github": "rclone/rclone"
     }
   }
 }

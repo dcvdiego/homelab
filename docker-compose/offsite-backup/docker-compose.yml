@@ -1,0 +1,42 @@
+# Off-site, encrypted backups with rustic (https://rustic.cli.rs) to a cloud remote through rclone.
+# What, when, setup and restore: docs/backups.md#off-site-rustic--rclone
+#
+# Sources are mounted read-only at the same paths as on docker-prod, so restore paths read the same.
+# Config (rustic profile, scripts) comes from this checkout and is read on every run, so a merged change
+# applies at the next run; the image only changes on a version bump (Komodo stack: run_build).
+services:
+  offsite-backup:
+    build: .
+    container_name: offsite-backup
+    restart: unless-stopped
+    environment:
+      RUSTIC_PASSWORD: ${RUSTIC_PASSWORD}          # repository key; a copy MUST live off this server
+      KUMA_PUSH_URL: ${KUMA_PUSH_URL:-}            # http://uptime-kuma:3001/api/push/<token>
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-15 3 * * *}
+      MAINTAIN_DAY: ${MAINTAIN_DAY:-7}             # ISO weekday (7 = Sunday): forget + prune + check after the backup
+      CHECK_SUBSET: ${CHECK_SUBSET:-5%}            # share of pack data downloaded and verified each week
+      RCLONE_BWLIMIT: ${RCLONE_BWLIMIT:-}          # Google Drive: 8M keeps under its 750 GiB/day upload cap
+      RCLONE_CONFIG: /config/rclone/rclone.conf
+    volumes:
+      - ./bin:/opt/offsite:ro
+      - ./rustic:/etc/rustic:ro                    # rustic.toml = the default profile
+      - /docker/offsite-backup/rclone:/config/rclone   # rclone.conf (root 600); rw so OAuth token refreshes persist
+      - rustic-cache:/cache
+      - /etc/localtime:/etc/localtime:ro
+      - /data/restore:/restore                     # the one writable target: `rustic restore … /restore/<dir>`
+      # sources
+      - /data/immich:/data/immich:ro
+      - /data/manual_backups:/data/manual_backups:ro
+      - /docker:/docker:ro
+      - /etc/komodo:/etc/komodo:ro
+    networks:
+      - default
+    mem_limit: 2g
+
+networks:
+  default:
+    name: network_default
+    external: true
+
+volumes:
+  rustic-cache:

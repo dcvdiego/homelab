@@ -1,0 +1,56 @@
+# rustic profile for the off-site repository (default profile: /etc/rustic/rustic.toml in the container).
+# Reference: https://github.com/rustic-rs/rustic/blob/v0.12.0/config/full.toml
+# Password: RUSTIC_PASSWORD (Komodo stack env). rclone remote "offsite": /docker/offsite-backup/rclone/rclone.conf.
+
+[global]
+no-progress = true
+log-level = "info"
+
+[repository]
+repository = "rclone:offsite:homelab-rustic"
+cache-dir = "/cache/rustic"
+
+[repository.options]
+timeout = "30min"   # rclone backend; Drive/OneDrive can stall on large packs while throttled
+
+[backup]
+host = "docker-prod"   # fixed, so a recreated container continues the same snapshot groups
+exclude-if-present = [".nobackup", "CACHEDIR.TAG"]
+
+# Immich: originals (upload/, library/), profile pictures, its own DB backups; thumbs/ and encoded-video/
+# (18 GB) could be regenerated but are kept so a restore is usable straight away. Database: the nightly
+# pg_dumpall of immich_postgres in /docker/db-dumps (docker snapshot below).
+[[backup.snapshots]]
+label = "immich"
+sources = ["/data/immich"]
+
+[[backup.snapshots]]
+label = "manual-backups"
+sources = ["/data/manual_backups"]
+
+# Everything that brings the services back: app data and configs, database dumps (/docker/db-dumps),
+# Komodo's nightly database backup (/docker/komodo/backups: every stack's env and secrets), and the
+# Proxmox host config export (/docker/backups/pvehost: LXC configs, storage, network).
+# Left out: re-downloadable models and caches.
+[[backup.snapshots]]
+label = "docker"
+sources = ["/docker"]
+globs = [
+  "!/docker/lost+found",
+  "!/docker/ollama",
+  "!/docker/*/cache",          # apps' top-level cache dirs
+  "!/docker/frigate/config/model_cache",
+  "!/docker/offsite-backup/rclone",
+]
+
+# docker-prod's Komodo Periphery: config and the pre-deploy backups (stack checkouts come from git).
+[[backup.snapshots]]
+label = "komodo-prod"
+sources = ["/etc/komodo"]
+globs = ["!/etc/komodo/stacks"]
+
+[forget]
+keep-daily = 7
+keep-weekly = 5
+keep-monthly = 12
+keep-yearly = 3

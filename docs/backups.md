@@ -9,8 +9,10 @@ How the homelab is backed up, and where each piece is configured. Set up 2026-10
 | LXC rootfs (+ `/docker` via CT 100) | vzdump jobs, Sat 02:00 (100, 101, 106) and 03:00 (104, 201), snapshot mode | PBS `homelab-backups` (CT 105, 3TB on `vault`) |
 | Proxmox host config (`/etc`, `/etc/pve`, `/var/lib/pve-cluster`, `/root`) | systemd timer `pve-host-backup.timer`, Sat 04:30 → `/usr/local/sbin/pve-host-backup.sh` | PBS group `host/pvehost` |
 | Databases on docker-prod | `scripts/db-dumps.sh`, cron 01:30 daily (`/etc/cron.d/db-dumps` in CT 101) | `/docker/db-dumps` (7 days), then PBS + Backblaze with `/docker` |
-| Immich DB | Immich's own nightly backup job | `/data/immich/backups` |
+| Immich DB | Immich's own nightly backup job (nothing written since 2026-11-07 when checked), and `pg_dumpall` in `db-dumps.sh` since 2026-11-27 | `/data/immich/backups`, `/docker/db-dumps` |
 | `/data` and `/docker` files | Backblaze, over the SMB shares from CT 100 | off-site |
+| Immich media, `/data/manual_backups`, `/docker`, docker-prod's `/etc/komodo`, Proxmox host config | rustic + rclone, daily 03:15 (stack `offsite-backup`, [below](#off-site-rustic--rclone)) | encrypted repository on the cloud drive (Google Drive or OneDrive) |
+| Proxmox host config, daily | `pve-config-export.timer` 00:45 → `/usr/local/sbin/pve-config-export.sh` | `/docker/backups/pvehost` (newest 14), then off-site with `/docker` |
 | PBS → off-site PBS | `pbs-pc` (192.168.1.50) pulls from CT 105 when it is online | secondary PBS |
 
 ## vzdump on this host
@@ -97,7 +99,7 @@ ntfy runs on docker-prod (`docker-compose/ntfy`), topic `homelab`, `auth-default
 
 `scripts/db-dumps.sh` (installed at `/docker/scripts/db-dumps.sh` in CT 101, root-only):
 
-- Postgres (`security-postgresql-1`, `tandoor-db`, `nextcloud-db`, `zulip-database`, `windmill-db`):
+- Postgres (`security-postgresql-1`, `tandoor-db`, `nextcloud-db`, `zulip-database`, `windmill-db`, `immich_postgres`):
   `pg_dumpall` inside each container. MariaDB (every container from the `mariadb` image, found by image, so also the private repo's
   stacks'): `mariadb-dump --all-databases
   --single-transaction`. CouchDB (`obsidian-livesync`): `_all_docs?include_docs=true&attachments=true` per DB.
@@ -145,3 +147,118 @@ before `compose up`), so nothing is upgraded without a copy.
 - Restore: Postgres `gzip -dc <file>.sql.gz | docker exec -i <container> psql -U <user> postgres`;
   MariaDB `gzip -dc <file>.sql.gz | docker exec -i notes-db-1 sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb -uroot'`;
   files: stop the service, `tar xzf <file>.tar.gz -C <host dir>`, start it.
+
+## Off-site: rustic + rclone
+
+Stack `offsite-backup` (docker-prod, `docker-compose/offsite-backup/`) backs up everything needed to
+rebuild the server, plus the photos and manual backups that exist nowhere else, into one encrypted,
+deduplicated [rustic](https://rustic.cli.rs) repository on a cloud drive. rustic starts `rclone serve
+restic` itself for the `rclone:` backend ([docs](https://rustic.cli.rs/docs/commands/init/rclone.html));
+rclone talks to Google Drive or OneDrive. Set up 2026-11-27 with rustic 0.12.0 and rclone 1.76.0.
+
+| Snapshot label | Source (read-only, same path in the container) | Size (2026-11-27) |
+|---|---|---|
+| `immich` | `/data/immich`: originals (`upload/`, `library/`), profiles, thumbs and transcodes (kept so a restore works straight away), Immich's own DB backups | ~172 GB |
+| `manual-backups` | `/data/manual_backups` (includes the old-xps13 pictures Immich shows as an external library) | ~762 GB |
+| `docker` | `/docker`: every app's data and config, `db-dumps/` (now with `immich_postgres`), `komodo/backups/` (Komodo's nightly DB backup: every stack's env and secrets), `backups/pvehost/` (host config). Left out: `ollama/` (models), every `/docker/<app>/cache`, `frigate/config/model_cache`, the rclone token | ~24 GB |
+| `komodo-prod` | `/etc/komodo` on docker-prod: Periphery config, pre-deploy backups (not `stacks/`, which is git) | small |
+
+The whole repository is encrypted with the key in `RUSTIC_PASSWORD`: file contents, file names and
+snapshot metadata. The cloud provider only sees opaque pack files.
+
+- **Schedule:** daily 03:15 (`BACKUP_SCHEDULE`), after the host config export (00:45), Komodo's DB
+  backup (01:00) and the DB dumps (01:30). On Sundays (`MAINTAIN_DAY=7`) the run then does `forget
+  --prune` (keep 7 daily, 5 weekly, 12 monthly, 3 yearly) and `check --read-data --read-data-subset 5%`:
+  it downloads and verifies about 5% of the data each week.
+- **One run at a time:** a run that finds the previous one still going logs "skipped" and exits. The
+  first upload takes days: with Drive's 750 GiB/day upload cap, `RCLONE_BWLIMIT=8M` (8 MiB/s, about 675
+  GiB/day) keeps rclone under it, so about 33 hours for ~950 GB if the uplink keeps up.
+- **Config:** the rustic profile (`rustic/rustic.toml`) and the scripts (`bin/`) are mounted from the
+  stack's checkout and read on every run, so a merged change applies at the next run. The image changes
+  only on a version bump (the Komodo stack has `run_build`). Edit the sources and retention in
+  `rustic.toml`.
+- **Status:** `docker logs offsite-backup` (and Loki), `/cache/state/last-run` in the container, and the
+  Uptime Kuma push monitor once `KUMA_PUSH_URL` is set. Exit code 3 from rustic (some files unreadable)
+  counts as success with a note, because the snapshot is saved. The log lists the files.
+- **Cost of a run:** nightly changes are small (DB dumps, app data). The DB dumps are gzip, so each
+  night's dumps are uploaded again (a few hundred MB, mostly Immich's).
+
+### Setup (owner, once)
+
+1. **Save the key off this server.** Komodo → Stacks → `offsite-backup` → Environment →
+   `RUSTIC_PASSWORD` (the ops request generated it). Put it in a password manager that is **not** the
+   self-hosted Vaultwarden, and on paper. Without it the off-site copy can't be read, and the copy is
+   only for the day this server is gone.
+2. **Google Drive remote** ([rclone: drive](https://rclone.org/drive/)). This needs a Google One plan
+   with room for ~1 TB and growth (2 TB).
+   1. Make your own OAuth client ([rclone: making your own client_id](https://rclone.org/drive/#making-your-own-client-id)):
+      Google Cloud console → new project → enable the Google Drive API → OAuth consent screen
+      (External) → client ID of type **Desktop app**. **Publish the app** (status "In production",
+      unverified is fine for yourself). An app left in "Testing" issues refresh tokens that expire after
+      7 days, and backups then stop.
+   2. On a PC with a browser: `rclone config create offsite drive client_id=<id> client_secret=<secret>
+      scope=drive.file`. With `drive.file`, rclone sees only the files it created itself.
+   3. Save the client ID and secret next to the rustic key: a restore with a different client can't see
+      `drive.file` files.
+   4. Copy the `[offsite]` section from `rclone config file` into docker-prod's
+      `/docker/offsite-backup/rclone/rclone.conf` (root, mode 600; `pct exec 101` from pvehost).
+
+   **OneDrive instead:** `rclone config create offsite onedrive` ([rclone: onedrive](https://rclone.org/onedrive/);
+   rclone's own client ID is fine). Set `RCLONE_BWLIMIT=` (empty) in the stack env, since OneDrive has
+   no daily cap. A Microsoft 365 Personal plan's 1 TB is already too small for this. The config dir is
+   mounted read-write because OneDrive rotates refresh tokens and rclone has to save the new one.
+3. **Check it:** `docker exec offsite-backup rclone lsd offsite:` lists the drive.
+4. **Monitoring:** in Uptime Kuma, add a push monitor "Backups: off-site (push)" with a 25 h heartbeat
+   interval (pause it until the first upload has finished). Put `http://uptime-kuma:3001/api/push/<token>`
+   into `KUMA_PUSH_URL` in the stack env, then redeploy. Add it to `uptime-kuma-monitors.py` in the private
+   repo.
+5. **First run:** wait for 03:15, or start it now with `docker exec -d offsite-backup sh -c
+   '/opt/offsite/backup.sh > /proc/1/fd/1 2>&1'` and follow it with `docker logs -f offsite-backup`. The
+   first run creates the repository (`homelab-rustic` in the drive).
+
+### Restore
+
+**Server still up** (a deleted album, a broken app): restore into `/data/restore` (mounted as
+`/restore`), check the files, then move them into place.
+
+```sh
+docker exec offsite-backup rustic snapshots                       # what's there, per label
+docker exec offsite-backup rustic ls latest:/data/immich/upload --filter-label immich | head
+docker exec offsite-backup rustic restore latest:/docker/ha /restore/ha --filter-label docker
+docker exec offsite-backup rustic restore <snapshot id>:/data/manual_backups/xps13 /restore/xps13
+```
+
+**Server gone.** On any Linux machine, using the key and the OAuth client saved in setup:
+
+1. Install the [rustic](https://github.com/rustic-rs/rustic/releases) and [rclone](https://rclone.org/downloads/)
+   binaries. `rclone config create offsite drive client_id=<saved id> client_secret=<saved secret>
+   scope=drive.file` (the same client, so the repository's files are visible), then
+   `export RUSTIC_PASSWORD=<key>` and `R="rustic -r rclone:offsite:homelab-rustic"`.
+2. `$R snapshots`. Then `$R restore latest:/docker/backups/pvehost /tmp/pvehost --filter-label docker`
+   and unpack the newest tarball: `etc/pve/lxc/*.conf` (container configs), `etc/pve/storage.cfg`,
+   `etc/network/interfaces`, `config.db` (the whole cluster config), and `/root` and `/usr/local/sbin` (host
+   scripts, `homelab.env`). Reinstall Proxmox and recreate the containers from those configs, or
+   restore them from PBS if PBS survived ([Restoring a container](#restoring-a-container)).
+3. `/docker`: `$R restore latest:/docker /docker --filter-label docker`. This brings back the apps' data and
+   configs, `db-dumps/` and `komodo/backups/`.
+4. Komodo: start Core with an empty MongoDB, then restore its database from `/docker/komodo/backups`
+   with `km database restore` ([Komodo: backup and restore](https://komo.do/docs/setup/backup)). That
+   brings back every stack's config and env. Deploy the stacks.
+5. Databases: load each stack's newest dump from `/docker/db-dumps` (commands in
+   [Database dumps](#database-dumps)), Immich's included. Live Postgres directories copied from a
+   running server are crash-consistent at best: prefer the dumps.
+6. Immich: `$R restore latest:/data/immich /data/immich --filter-label immich`, then follow
+   [Immich: backup and restore](https://docs.immich.app/administration/backup-and-restore/) to load the
+   database dump into a fresh `immich_postgres` before starting `immich_server`.
+7. `/data/manual_backups`: `$R restore latest:/data/manual_backups /data/manual_backups --filter-label manual-backups`.
+
+Downloads from Google Drive are free and not capped like uploads. Expect hours for the full ~950 GB.
+
+### Changing it
+
+- Add a source: a new `[[backup.snapshots]]` with its own `label` in `rustic/rustic.toml`, plus its
+  read-only mount in `docker-compose.yml` at the same path.
+- Version bumps come from Renovate: rustic is `review` (0.x minors change options; read the
+  [breaking changes](https://rustic.cli.rs/docs/breaking_changes.html)), rclone is in the weekly batch.
+- Never change `RUSTIC_PASSWORD` in Komodo. Add a second key with `rustic key add` first if it has to
+  rotate.

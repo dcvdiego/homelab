@@ -50,6 +50,7 @@
         "bugattiguy527/termix",
         "devture/exim-relay",
         "alpine",
+        "rclone/rclone",
         "ghcr.io/actions/actions-runner",
         "data.forgejo.org/forgejo/runner",
         "ghcr.io/renovatebot/renovate",
@@ -88,7 +89,8 @@
         "mongo",
         "ghcr.io/nikosch86/docker-proxmox-backup-server",
         "ghcr.io/windmill-labs/windmill",
-        "ghcr.io/windmill-labs/windmill-extra"
+        "ghcr.io/windmill-labs/windmill-extra",
+        "ghcr.io/rustic-rs/rustic"
       ],
       "addLabels": ["review"]
     },
@@ -192,6 +194,11 @@
       "groupSlug": "windmill",
       "sourceUrl": "https://github.com/windmill-labs/windmill",
       "prBodyNotes": ["**Windmill**: server, workers, indexer and windmill-extra on the same version (grouped PR); postgres follows the release's docker-compose.yml (CI syncs it). Migrations run on their own at startup and there's no documented downgrade: the Komodo pre-deploy takes a pg_dumpall first, and that dump is the way back. Read the release notes for breaking changes (CHANGELOG `BREAKING`). Docs: https://www.windmill.dev/docs/advanced/self_host"]
+    },
+    {
+      "matchPackageNames": ["ghcr.io/rustic-rs/rustic"],
+      "sourceUrl": "https://github.com/rustic-rs/rustic",
+      "prBodyNotes": ["**rustic** (off-site backups): 0.x minors can change options and defaults. Read https://rustic.cli.rs/docs/breaking_changes.html for every version in between and check docker-compose/offsite-backup/rustic/rustic.toml and bin/backup.sh against it. After merging, run a backup by hand (`docker exec offsite-backup /opt/offsite/backup.sh`) or check the next night's Uptime Kuma push."]
     },
     {
       "matchPackageNames": ["codeberg.org/forgejo/forgejo"],

@@ -80,6 +80,8 @@ Kinds:
 | `ghcr.io/windmill-labs/windmill-extra` | windmill | review | Upstream compose runs `:latest`; it is released with the same `X.Y.Z` as the server (same digest as `latest` at 1.884.1), so pinned to the server's version (grouped PR). | [self-host](https://www.windmill.dev/docs/advanced/self_host) |
 | `ghcr.io/renovatebot/renovate` | renovate | batch | Semver tags; docs run the default (not `-full`) image, which installs tools at runtime. Minors and patches weekly; majors as their own PR. | [running Renovate](https://docs.renovatebot.com/getting-started/running/) |
 | `alpine` | pre-deploy backups (`scripts/pre-deploy-backup.sh`) | batch | Helper for tar; any current release. | [Docker Hub](https://hub.docker.com/_/alpine) |
+| `ghcr.io/rustic-rs/rustic` | offsite-backup (Dockerfile, binary copied into the rclone image) | review | Pin `vX.Y.Z` (the image is `FROM scratch`, just `/rustic`). 0.x: minor releases carry breaking changes (prune/chunker/options in 0.12), listed per version on the breaking-changes page; read it and check `docker-compose/offsite-backup/rustic/rustic.toml` against it. Repository format stays compatible with restic. | [installation](https://rustic.cli.rs/docs/installation.html), [breaking changes](https://rustic.cli.rs/docs/breaking_changes.html) |
+| `rclone/rclone` | offsite-backup (Dockerfile) | batch | Official image, semver tags `X.Y.Z` (docs show `latest`); pinned exact. Config and remotes are backward compatible; read the changelog for backend changes (Drive, OneDrive). | [install: Docker](https://rclone.org/install/#docker), [changelog](https://rclone.org/changelog/) |
 
 ## Catch-up (state on 2026-10-24)
 

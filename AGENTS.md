@@ -77,8 +77,8 @@ Private repo `diego/homelab-private` on Forgejo (`http://git.homelab.lan:3200`):
 | pbs | LXC | 192.168.1.251 | 105 | Proxmox Backup Server 3.4.8 (primary, pbs-lxc storage, homelab-backups datastore 3TB HDD) |
 | pbs-pc | Ubuntu dual-boot | 192.168.1.50 | — | PBS secondary (Docker, sync from LXC) |
 
-Backups (vzdump → PBS, host config, nightly DB dumps), retention and ntfy notifications:
-[docs/backups.md](docs/backups.md).
+Backups (vzdump → PBS, host config, nightly DB dumps, off-site rustic + rclone to a cloud drive), retention
+and ntfy notifications: [docs/backups.md](docs/backups.md).
 
 External access via **Cloudflare Tunnel** (selective services only).
 `docker-prod` also has **Tailscale** (its `100.x` tailnet address is the tailnet's DNS server).
