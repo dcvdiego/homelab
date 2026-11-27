@@ -33,11 +33,12 @@ touch /run/warpgate-restart-needed
 SH
 
 echo "== 2. Restart and verify"
-PVE 'pct exec 106 -- sh -s' <<'SH'
+# The restart may cut this session before it closes; the verification below decides.
+PVE 'pct exec 106 -- sh -s' <<'SH' || echo "  (session ended by the restart)"
 set -eu
 if [ -e /run/warpgate-restart-needed ]; then
   rm -f /run/warpgate-restart-needed
-  setsid sh -c 'sleep 3; systemctl restart warpgate' </dev/null >/dev/null 2>&1 &
+  setsid sh -c 'sleep 10; systemctl restart warpgate' </dev/null >/dev/null 2>&1 &
   echo "  restart scheduled"
 else
   echo "  no change, no restart"
