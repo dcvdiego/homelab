@@ -2,7 +2,7 @@ version: "3"
 services:
   loki:
     container_name: loki
-    image: grafana/loki:3.6.10@sha256:f59e6aedfee6af2388d69962b178a35a23152573b4bf0937106746deb7146ec7
+    image: grafana/loki:3.7.10@sha256:b43c257ccfc925d4a50b8717cac61a3b51df8c48d01847936057e5c4075a24a7
     volumes:
       - /docker/grafana-monitoring/loki:/etc/loki
     ports:
@@ -17,7 +17,7 @@ services:
 
   alloy:
     container_name: alloy
-    image: grafana/alloy:v1.15.0@sha256:579582bce40049f2e27bd1e445000689c907a41f0495cb0d0c7f65609316ba7c
+    image: grafana/alloy:v1.22.0@sha256:9acc2529bc1edb7f5b2bd801dd8334ebc80c158e3a9e5526ecd7c9a273d43189
     restart: unless-stopped
     hostname: docker-prod  # becomes the cAdvisor metrics' instance label
     mem_limit: 512m
@@ -60,7 +60,7 @@ services:
       # To enable Authentik forward auth: - "traefik.http.routers.grafana.middlewares=authentik-forwardauth@docker"
 
   prometheus:
-    image: prom/prometheus:v3.11.1@sha256:759ea6db49103737f2a6f420b0d1632062d8ad99dec086c76db605fd0bf23e15
+    image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
     container_name: prometheus
     restart: unless-stopped
     ports:
@@ -100,7 +100,7 @@ services:
       - PVE_VERIFY_SSL=false  # pvehost's self-signed certificate; LAN only
 
   uptime-kuma:
-    image: louislam/uptime-kuma:2.2.1@sha256:7337368a77873f159435de9ef09567f68c31285ed5f951dec36256c4b267ee44
+    image: louislam/uptime-kuma:2.5.12@sha256:8e4b6bef96417ec98a35dc103c99cc64fc229a01e584e56d95d9004d2003c02a
     container_name: uptime-kuma
     restart: unless-stopped
     mem_limit: 1g  # node + its embedded MariaDB (~600 MB together today)

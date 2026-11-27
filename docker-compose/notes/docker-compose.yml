@@ -1,7 +1,7 @@
 version: "2.1"
 services:
   couchdb:
-    image: couchdb:3.5.1@sha256:ccea1e8035bf7afd68336e24056a1ca9c1c46d7abe42da686322c0ac7218e5c2
+    image: couchdb:3.5.2@sha256:5fc596110eac7f412173a7d9de14f70aa5d3e816790fb6e70642755d4a4cf464
     container_name: obsidian-livesync
     user: 1000:1000
     environment:
@@ -46,7 +46,7 @@ services:
       # NOTE: Has mobile app — avoid forward auth. Use Vikunja's native auth.
 
   db:
-    image: mariadb:10.11.17@sha256:8acd4a5561e8897cfc8a99480f25bcecb10b726fa17b1ec7381c6ef36fa00a79
+    image: mariadb:10.11.19@sha256:e5fe75b2b9de0eb9f6f9a4d9c97272fb3a7480e389ccd487a786bab2a12cc0d7
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
