@@ -45,21 +45,34 @@ Read it like code that runs as root. In particular, check that it doesn't print 
 secret anywhere (`echo $CF_TOKEN`, `curl` to a host that isn't yours, writing it into the
 results dir) and that the change matches the PR description.
 
+## Writing remote commands
+
+Send each remote script as a heredoc with a quoted delimiter, so nothing is nested inside a
+string and no quoting can break:
+
+```bash
+PVE 'pct exec 101 -- sh -s' <<'SH'
+set -eu
+docker restart pve-exporter
+SH
+```
+
+Values from the request go in as arguments (`'pct exec 101 -- sh -s -- arg'`, read as `$1`) or
+are computed on the remote side. Avoid `PVE "pct exec 101 -- sh -c '...\"...\"...'"`: three
+layers of quoting is where PR #75-era bugs came from.
+
+Warpgate closes a session after 30 minutes with no output from the target
+(`ssh.inactivity_timeout`; client keepalives don't count). Anything that can be silent longer
+(big archives, dumps) runs detached with `setsid` and is polled with short calls, as in
+`2026-11-26-prometheus-consolidate-finish.sh`.
+
 ## Before merge (CI)
 
-The `ops-check` workflow (`.github/workflows/ops-check.yml`, proposed in `ops/pending-workflows/`) rehearses each added or edited request with fake `ssh`, `curl` and `sleep`
-(`scripts/rehearse-request.py`); nothing reaches the homelab. It fails on shell errors, on quoting
-errors in any nested layer of a remote command (`ssh` → `pct exec … sh -c '…'`), and on
-long-running work (tar, rsync, du, dumps, pulls) in a single SSH session, because Warpgate cuts
-sessions after about 5 minutes: run those detached with `setsid` and poll. If such a command is
-known to be quick, name it in a line `# rehearse: allow-long <command> <why>` (e.g.
-`# rehearse: allow-long du small dir`): findings for every use of that command in the request
-become warnings, and only that command's. Prefer detaching over allow-long when in doubt.
-Run it locally with `python3 scripts/rehearse-request.py ops/requests/<name>.sh`.
-
-It also renders every stack as Komodo's periphery sees it (`scripts/check-compose-komodo.py`):
-compose runs inside that container and can't read an `env_file` outside the stack's checkout or
-`/etc/komodo`. Bind mounts are fine; the host's Docker daemon resolves them.
+The `ops-check` workflow (`.github/workflows/ops-check.yml`, proposed in `ops/pending-workflows/`)
+runs `shellcheck` on each added or edited request and renders every stack as Komodo's periphery
+sees it (`scripts/check-compose-komodo.py`): compose runs inside that container and can't read an
+`env_file` outside the stack's checkout or `/etc/komodo`. Bind mounts are fine; the host's Docker
+daemon resolves them.
 
 What it can't test: anything that depends on live state (permissions of files on a host, real
 tokens, how long a real archive takes). Each request still ends with checks that fail loudly.
