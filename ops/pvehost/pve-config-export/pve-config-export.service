@@ -1,0 +1,8 @@
+[Unit]
+Description=Export Proxmox host config to /docker/backups/pvehost (picked up by the off-site backup)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pve-config-export.sh
+Nice=10
+IOSchedulingClass=idle

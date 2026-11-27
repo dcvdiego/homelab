@@ -3,9 +3,12 @@
 #
 # Why: PBS backs up the database files as they are on disk, which is at best crash-consistent.
 # A logical dump restores cleanly into any version-compatible server.
-# Where: /docker/db-dumps (on the shared /docker disk, so it is picked up by PBS and Backblaze).
+# Where: /docker/db-dumps (on the shared /docker disk, so it is picked up by PBS, Backblaze and the
+# off-site rustic repository).
 # Install: /docker/scripts/db-dumps.sh, run by /etc/cron.d/db-dumps at 01:30 (before Saturday's 02:00 backup).
-# Immich is not here: it writes its own dumps to /data/immich/backups.
+# Immich (immich_postgres) is here too, although it writes its own dumps to /data/immich/backups: that job
+# had written nothing since 2026-11-07 when checked (2026-11-27), and this dump is the one that goes
+# off-site with /docker (docs/backups.md#off-site-rustic--rclone).
 # Undo: rm /etc/cron.d/db-dumps /docker/scripts/db-dumps.sh (and /docker/db-dumps if unwanted).
 #
 # Credentials never leave the containers: each dump runs inside its container using that
@@ -67,7 +70,7 @@ finish() {
 }
 
 # Postgres: full cluster dump (all databases, roles) as the container's own superuser.
-for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database windmill-db; do
+for c in security-postgresql-1 tandoor-db nextcloud-db zulip-database windmill-db immich_postgres; do
   skip "$c" && continue
   f="$OUT/$c-$STAMP.sql.gz"
   docker exec "$c" sh -c 'pg_dumpall -U "$POSTGRES_USER"' 2>>"$OUT/.errors.log" | gzip > "$f.tmp"
