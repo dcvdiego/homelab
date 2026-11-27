@@ -47,7 +47,6 @@ PVE 'pct exec 106 -- sh -s' <<'SH' || echo "  (session ended by the restart)"
 set -eu
 if [ -e /run/warpgate-restart-needed ]; then
   rm -f /run/warpgate-restart-needed
-  systemctl show -p MainPID --value warpgate > /run/warpgate-pid-before
   setsid sh -c 'sleep 10; systemctl restart warpgate' </dev/null >/dev/null 2>&1 &
   echo "  restart scheduled"
 else
@@ -60,17 +59,13 @@ for _ in 1 2 3 4 5 6; do
 set -eu
 systemctl is-active warpgate
 grep '^  inactivity_timeout: ' /var/lib/warpgate/warpgate.yaml | xargs
-# restarted: the main PID changed since step 2 (no PID file: no restart was needed)
-if [ -e /run/warpgate-pid-before ]; then
-  [ "$(systemctl show -p MainPID --value warpgate)" != "$(cat /run/warpgate-pid-before)" ] && echo restarted || echo not-restarted
-else
-  echo restarted
-fi
+# running with the change: the process started after the config file was last written
+pid=$(systemctl show -p MainPID --value warpgate)
+[ "$pid" != 0 ] && [ ! /var/lib/warpgate/warpgate.yaml -nt "/proc/$pid" ] && echo restarted || echo not-restarted
 SH
   ); then
     echo "$out" | sed 's/^/  /'
     if echo "$out" | grep -qx active && echo "$out" | grep -q 'inactivity_timeout: 30m' && echo "$out" | grep -qx restarted; then
-      PVE 'pct exec 106 -- rm -f /run/warpgate-pid-before' || true
       echo "  ok"; exit 0
     fi
   fi
