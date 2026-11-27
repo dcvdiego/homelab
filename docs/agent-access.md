@@ -66,7 +66,7 @@ with `~/.ssh/warpgate_agent`.
 | | |
 |---|---|
 | Host | LXC 106 `warpgate`, 192.168.1.227, `warpgate.homelab.lan`. Unprivileged Debian 12, 1 core / 512 MB / 4 GB on `disks`, onboot order 6, in the Sat 02:00 PBS job. Container sshd disabled: manage with `pct exec 106` |
-| Warpgate | `/usr/local/bin/warpgate` v0.29.1 (sha256-verified release binary), `warpgate.service` as user `warpgate`, config/db/recordings in `/var/lib/warpgate`. SSH :2222, admin UI https://warpgate.homelab.lan:8888 (self-signed). Host key `SHA256:VFVmrUZB4rfhGN0X5MeYVnU+TG/wev40C6wTECj9g7w` |
+| Warpgate | `/usr/local/bin/warpgate` v0.29.1 (sha256-verified release binary), `warpgate.service` as user `warpgate`, config/db/recordings in `/var/lib/warpgate`. SSH :2222, admin UI https://warpgate.homelab.lan:8888 (self-signed). `ssh.inactivity_timeout: 30m` (default 5m cut silent ops-request sessions; keepalives don't count) Host key `SHA256:VFVmrUZB4rfhGN0X5MeYVnU+TG/wev40C6wTECj9g7w` |
 | Notifier | `warpgate-approval-notify.service` (`ops/warpgate/approval-notify.py`): reads pending approvals from Warpgate's SQLite read-only, pushes to ntfy topic `warpgate` as ntfy user `warpgate` (write-only). Token in `/etc/warpgate-notify.env` (root, 600) |
 | Target keys | Warpgate's client key is in `authorized_keys` of root@pvehost and ai-agent@{pvehost,docker-prod,docker-tower} with `from="192.168.1.227"` (`ops/warpgate/authorize-targets.sh`) |
 | Config | `scripts/warpgate-setup.py` (idempotent, needs an admin API token in `~/.config/homelab/warpgate-api-token`) creates the roles, targets and users below. Users are public-key only and limited to one source IP |

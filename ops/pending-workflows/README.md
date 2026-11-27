@@ -5,7 +5,7 @@ change what runs in CI). Workflow changes are proposed here and moved into place
 
 | File | Goes to | What |
 |---|---|---|
-| `ops-check.yml` | `.github/workflows/ops-check.yml` (new) | Before merge: renders every stack as Komodo's periphery sees it (scripts/check-compose-komodo.py) and rehearses added or edited ops requests with fake ssh/curl (scripts/rehearse-request.py); no secrets, read-only |
+| `ops-check.yml` | `.github/workflows/ops-check.yml` (new) | Before merge: renders every stack as Komodo's periphery sees it (scripts/check-compose-komodo.py) and runs shellcheck on added or edited ops requests; no secrets, read-only |
 | `release-notes.yml` | `.github/workflows/release-notes.yml` (new) | Comments the official upgrade notes of pending image updates on the Renovate dashboard issue and on PRs that change versions (scripts/release-notes.py) |
 
 From the owner's machine, after the PR that added them is merged:
