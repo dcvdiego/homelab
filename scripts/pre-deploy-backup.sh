@@ -154,6 +154,13 @@ case "$STACK" in
     # Whole cluster: Windmill keeps datatable/DuckLake/wm_fork_* databases and cluster-level roles
     # beside the windmill DB (its docs: dump with pg_dumpall, never one database)
     pg windmill-db ;;
+  firefly-iii)
+    # Upgrade docs: "Always make a backup of your database and volumes before you upgrade". Firefly III
+    # stopped so the dump and the attachments match; the importer and cron hold no data.
+    # First deploy: nothing running yet (both skip).
+    stop firefly-iii
+    mariadb firefly-iii-db
+    files firefly-iii-upload /docker/firefly-iii/upload ;;
   open-webui)
     stop open-webui
     files open-webui /docker/open-webui 'cache' ;;

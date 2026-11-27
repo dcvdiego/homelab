@@ -296,6 +296,12 @@
     },
     "alpine": {
       "link": "https://alpinelinux.org/releases/"
+    },
+    "fireflyiii/core": {
+      "github": "firefly-iii/firefly-iii"
+    },
+    "fireflyiii/data-importer": {
+      "github": "firefly-iii/data-importer"
     }
   }
 }
