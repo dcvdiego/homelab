@@ -67,7 +67,7 @@ services:
     restart: unless-stopped
 
   collabora:
-    image: collabora/code:25.04.10.3.1@sha256:a51dd5d1741dea5d19f49d9997de2c321bf582076015ec4015941f3f00a5f4c0
+    image: collabora/code:26.04.6.2.1@sha256:a2f5d4e88addd46033d8440f7a13b82f7e6fe444bf8c6b5a3eadc789f0b5342b
     container_name: collabora
     environment:
       - DONT_GEN_SSL_CERT=YES
