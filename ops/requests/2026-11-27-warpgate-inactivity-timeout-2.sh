@@ -19,8 +19,8 @@ PVE 'pct exec 106 -- sh -s' <<'SH'
 set -eu
 f=/var/lib/warpgate/warpgate.yaml
 if grep -q '^  inactivity_timeout: 30m$' "$f"; then
-  pid=$(systemctl show -p MainPID --value warpgate)
-  if [ "$pid" != 0 ] && [ "$f" -nt "/proc/$pid" ]; then   # set, but warpgate started before the change
+  started=$(date -d "$(systemctl show -p ActiveEnterTimestamp --value warpgate)" +%s)
+  if [ "$(stat -c %Y "$f")" -ge "$started" ]; then   # set, but warpgate started before the change
     echo "  already 30m, but warpgate was started before the change: restart needed"
     touch /run/warpgate-restart-needed
   else
@@ -59,9 +59,9 @@ for _ in 1 2 3 4 5 6; do
 set -eu
 systemctl is-active warpgate
 grep '^  inactivity_timeout: ' /var/lib/warpgate/warpgate.yaml | xargs
-# running with the change: the process started after the config file was last written
-pid=$(systemctl show -p MainPID --value warpgate)
-[ "$pid" != 0 ] && [ ! /var/lib/warpgate/warpgate.yaml -nt "/proc/$pid" ] && echo restarted || echo not-restarted
+# running with the change: systemd started the service after the config file was last written
+started=$(date -d "$(systemctl show -p ActiveEnterTimestamp --value warpgate)" +%s)
+[ "$(stat -c %Y /var/lib/warpgate/warpgate.yaml)" -lt "$started" ] && echo restarted || echo not-restarted
 SH
   ); then
     echo "$out" | sed 's/^/  /'
