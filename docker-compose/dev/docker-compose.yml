@@ -1,6 +1,6 @@
 services:
   termix:
-    image: bugattiguy527/termix:release-1.11.2@sha256:1aeabcb75c70f2171879014c25a08b90164dd7350be86ae45c7eb7d9191a8428
+    image: bugattiguy527/termix:26.11.3@sha256:f5a208e3c570fa5d3ec65dc2ad462eacf96e0d9a7f4f84410e5694f5a388f5ba
     container_name: termix
     restart: unless-stopped
     network_mode: host
