@@ -19,7 +19,13 @@ PVE 'pct exec 106 -- sh -s' <<'SH'
 set -eu
 f=/var/lib/warpgate/warpgate.yaml
 if grep -q '^  inactivity_timeout: 30m$' "$f"; then
-  echo "  already 30m"
+  pid=$(systemctl show -p MainPID --value warpgate)
+  if [ "$pid" != 0 ] && [ "$f" -nt "/proc/$pid" ]; then   # set, but warpgate started before the change
+    echo "  already 30m, but warpgate was started before the change: restart needed"
+    touch /run/warpgate-restart-needed
+  else
+    echo "  already 30m and running with it"
+  fi
   exit 0
 fi
 grep -q '^  inactivity_timeout: ' "$f" || { echo "  no ssh.inactivity_timeout line in $f"; exit 1; }
@@ -41,6 +47,7 @@ PVE 'pct exec 106 -- sh -s' <<'SH' || echo "  (session ended by the restart)"
 set -eu
 if [ -e /run/warpgate-restart-needed ]; then
   rm -f /run/warpgate-restart-needed
+  systemctl show -p MainPID --value warpgate > /run/warpgate-pid-before
   setsid sh -c 'sleep 10; systemctl restart warpgate' </dev/null >/dev/null 2>&1 &
   echo "  restart scheduled"
 else
@@ -53,12 +60,21 @@ for _ in 1 2 3 4 5 6; do
 set -eu
 systemctl is-active warpgate
 grep '^  inactivity_timeout: ' /var/lib/warpgate/warpgate.yaml | xargs
+# restarted: the main PID changed since step 2 (no PID file: no restart was needed)
+if [ -e /run/warpgate-pid-before ]; then
+  [ "$(systemctl show -p MainPID --value warpgate)" != "$(cat /run/warpgate-pid-before)" ] && echo restarted || echo not-restarted
+else
+  echo restarted
+fi
 SH
   ); then
     echo "$out" | sed 's/^/  /'
-    echo "$out" | grep -qx active && echo "$out" | grep -q 'inactivity_timeout: 30m' && { echo "  ok"; exit 0; }
+    if echo "$out" | grep -qx active && echo "$out" | grep -q 'inactivity_timeout: 30m' && echo "$out" | grep -qx restarted; then
+      PVE 'pct exec 106 -- rm -f /run/warpgate-pid-before' || true
+      echo "  ok"; exit 0
+    fi
   fi
   sleep 10
 done
-echo "CHECK FAILED: warpgate not active with inactivity_timeout 30m (see undo above)"
+echo "CHECK FAILED: warpgate not restarted and active with inactivity_timeout 30m (see undo above)"
 exit 1
