@@ -1,0 +1,153 @@
+# firefly-iii: personal finance manager (https://www.firefly-iii.org) + its Data Importer, on docker-prod.
+# UI https://firefly.${DOMAIN}, importer https://firefly-importer.${DOMAIN}: on LAN/tailnet straight to
+# Traefik (Technitium split DNS), from outside through the *.$DOMAIN tunnel wildcard behind Cloudflare
+# Access (like windmill).
+#
+# Follows the official importer compose and env files (firefly-iii/docker docker-compose-importer.yml,
+# firefly-iii/firefly-iii .env.example, firefly-iii/data-importer .env.example) and the install docs:
+#   https://docs.firefly-iii.org/how-to/firefly-iii/installation/docker/
+#   https://docs.firefly-iii.org/how-to/data-importer/installation/docker/
+# Changes from upstream:
+# - Pinned images instead of :latest / mariadb:lts / alpine. MariaDB on the 11.8 LTS line (what
+#   mariadb:lts points at today).
+# - No host ports: Traefik serves both UIs. TRUSTED_PROXIES=** as the docs say for a reverse proxy.
+# - Settings inline, secrets from the Komodo stack env (example.env), instead of .env/.db.env/.importer.env.
+# - An explicit MariaDB root password (upstream: MYSQL_RANDOM_ROOT_PASSWORD) so the nightly dumps and
+#   the pre-deploy backup can dump as root, like every other MariaDB here.
+# - Data on host paths under /docker/firefly-iii (vzdump/PBS, nightly DB dump, pre-deploy backup).
+# - Cron: the same daily call to /api/v1/cron/<STATIC_CRON_TOKEN>, without upstream's `apk add tzdata`
+#   at start (no packages pulled at runtime): busybox crond runs in UTC, so it fires at 03:00 UTC.
+#
+# The importer has no login of its own. FIREFLY_III_ACCESS_TOKEN is deliberately unset: the importer
+# asks for an OAuth client ID and you sign in to Firefly III each time (docs' "Create an access token"
+# step), so reaching the importer gives nobody access to Firefly III. Scheduled imports (phase 2) need
+# the token and AUTO_IMPORT_SECRET; add them then, together with forward auth on the importer.
+#
+# Upgrades: migrations run at startup and "in some cases the upgrade process is destructive" (upgrade
+# docs): back up first (Komodo Pre Deploy). MariaDB majors are a dump and restore, never an image bump.
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  app:
+    image: fireflyiii/core:version-6.7.9@sha256:10bbe21fbdc68b8fa955d85827aeed197ab46d62c8c745e949d322b9f4b73ff5
+    container_name: firefly-iii
+    hostname: firefly-iii
+    stop_signal: SIGINT
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_KEY: ${FIREFLY_APP_KEY:?set in the Komodo stack env (exactly 32 characters)}
+      APP_URL: https://firefly.${DOMAIN:?set in the Komodo stack env}
+      TRUSTED_PROXIES: "**"
+      TZ: Europe/London
+      DEFAULT_LANGUAGE: en_GB
+      DEFAULT_LOCALE: equal
+      DB_CONNECTION: mysql
+      # Container name, not "db": network_default has other stacks' "db" services
+      DB_HOST: firefly-iii-db
+      DB_PORT: 3306
+      DB_DATABASE: firefly
+      DB_USERNAME: firefly
+      DB_PASSWORD: ${FIREFLY_DB_PASSWORD:?set in the Komodo stack env}
+      DKR_CHECK_SQLITE: "false"
+      # Exactly 32 characters; the cron service below calls /api/v1/cron/<token> daily
+      STATIC_CRON_TOKEN: ${FIREFLY_STATIC_CRON_TOKEN:?set in the Komodo stack env (exactly 32 characters)}
+      # No mail yet: password-reset and notification mails go to the log
+      MAIL_MAILER: log
+    volumes:
+      # Attachments. Owned by www-data (33:33), the user the image runs PHP as.
+      - /docker/firefly-iii/upload:/var/www/html/storage/upload
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [firefly, network_default]
+    labels:
+      - "traefik.enable=true"
+      # "-access": behind Cloudflare Access (CrowdSec whitelist, docker-compose/crowdsec)
+      - "traefik.http.routers.firefly-access.rule=Host(`firefly.${DOMAIN}`)"
+      - "traefik.http.routers.firefly-access.entrypoints=websecure"
+      - "traefik.http.routers.firefly-access.service=firefly"
+      - "traefik.http.services.firefly.loadbalancer.server.port=8080"
+      # NOTE: has an API used by phone apps and the importer (OAuth / personal access tokens): no forward
+      # auth. Use Firefly III's own login with 2FA (Profile -> Enable 2FA).
+    logging: *default-logging
+
+  db:
+    image: mariadb:11.8.9@sha256:e1d5495f445654134f226f55a41ce0da227116f6f27f283101f405c794d841fc
+    container_name: firefly-iii-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${FIREFLY_DB_ROOT_PASSWORD:?set in the Komodo stack env}
+      MARIADB_DATABASE: firefly
+      MARIADB_USER: firefly
+      MARIADB_PASSWORD: ${FIREFLY_DB_PASSWORD:?set in the Komodo stack env}
+    volumes:
+      - /docker/firefly-iii/db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 30s
+      start_interval: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [firefly]
+    logging: *default-logging
+
+  importer:
+    image: fireflyiii/data-importer:version-2.3.5@sha256:ed964a235ed215d3b7f314d73122e2bb9adb9577889face56b72c1f5ddbd67eb
+    container_name: firefly-iii-importer
+    hostname: firefly-iii-importer
+    restart: unless-stopped
+    environment:
+      # Internal URL for API calls; VANITY_URL is what your browser is sent to (OAuth, links)
+      FIREFLY_III_URL: http://firefly-iii:8080
+      VANITY_URL: https://firefly.${DOMAIN}
+      TRUSTED_PROXIES: "**"
+      EXPECT_SECURE_URL: "true"
+      TZ: Europe/London
+      FALLBACK_LOCALE: en_GB
+      # The default (debug) logs bank transaction data
+      LOG_LEVEL: notice
+      # Bank-data providers: empty means "ask in the UI". Fill in the Komodo stack env once you pick one.
+      # Enable Banking: app ID + private key with \n for newlines, in "quotes" (docs/firefly-iii.md)
+      ENABLE_BANKING_APP_ID: ${ENABLE_BANKING_APP_ID:-}
+      ENABLE_BANKING_PRIVATE_KEY: ${ENABLE_BANKING_PRIVATE_KEY:-}
+      LUNCH_FLOW_API_KEY: ${LUNCH_FLOW_API_KEY:-}
+      SIMPLEFIN_TOKEN: ${SIMPLEFIN_TOKEN:-}
+    depends_on:
+      - app
+    networks: [firefly, network_default]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.firefly-importer-access.rule=Host(`firefly-importer.${DOMAIN}`)"
+      - "traefik.http.routers.firefly-importer-access.entrypoints=websecure"
+      - "traefik.http.routers.firefly-importer-access.service=firefly-importer"
+      - "traefik.http.services.firefly-importer.loadbalancer.server.port=8080"
+      # Browser-only: forward auth is safe here. Turn it on with the Authentik provider (AGENTS.md)
+      # before adding FIREFLY_III_ACCESS_TOKEN for scheduled imports:
+      # - "traefik.http.routers.firefly-importer-access.middlewares=authentik-forwardauth@docker"
+    logging: *default-logging
+
+  cron:
+    image: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+    container_name: firefly-iii-cron
+    restart: unless-stopped
+    init: true
+    environment:
+      STATIC_CRON_TOKEN: ${FIREFLY_STATIC_CRON_TOKEN:?set in the Komodo stack env (exactly 32 characters)}
+    # Recurring transactions, bill reminders and auto-budgets only run when this is called daily
+    command: ["sh", "-c", "echo \"0 3 * * * wget -qO- http://firefly-iii:8080/api/v1/cron/$$STATIC_CRON_TOKEN;echo\" | crontab - && exec crond -f -L /dev/stdout"]
+    depends_on:
+      - app
+    networks: [firefly]
+    logging: *default-logging
+
+networks:
+  firefly: {}
+  network_default:
+    name: network_default
+    external: true

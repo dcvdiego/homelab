@@ -459,6 +459,13 @@ Komodo stack **windmill** (server docker-prod), `https://windmill.$DOMAIN`, comp
 as cron jobs or timers on a host. Layout, first sign-in, secrets, backups and upgrades:
 [docs/windmill.md](docs/windmill.md).
 
+## Firefly III (personal finance)
+
+Komodo stack **firefly-iii** (server docker-prod), `https://firefly.$DOMAIN` + importer
+`https://firefly-importer.$DOMAIN`, compose `docker-compose/firefly-iii/`. Holds the owner's bank
+transactions: agents don't read its database, importer logs or stack env. First start, bank-data
+providers for UK banks, backups: [docs/firefly-iii.md](docs/firefly-iii.md).
+
 ## Rules
 
 - **API first, SSH last**: Always use Proxmox API / Komodo / local CLIs before falling back to SSH. Never use `homelab-root` if there's an API or non-root SSH alternative. See Access Priority table above.
